@@ -1,24 +1,26 @@
 package socket
 
 import (
-	"fmt"
-	"github.com/tagDong/dnet"
+	"errors"
+	"github.com/tagDong/dnet/codec"
 	"github.com/tagDong/dnet/socket/tcp"
 	"net"
 )
 
-func StartTcpServe(addr string, newClient func(dnet.StreamSession)) {
-	go func() {
-		err := tcpServe(addr, newClient)
-		if err != nil {
-			panic(err)
-		}
-	}()
+type Server struct {
+	closeChan chan bool // 关服标识
+	codec     codec.Codec
 }
 
-func tcpServe(addr string, newClient func(dnet.StreamSession)) error {
+func newServer() *Server {
+	return &Server{closeChan: make(chan bool)}
+}
+
+var server *Server
+
+func StartTcpServe(addr string, newClient func(StreamSession)) error {
 	if newClient == nil {
-		return fmt.Errorf("newClient is nil")
+		return errors.New("newClient is nil")
 	}
 
 	listener, err := tcp.NewTCPListener(addr)
@@ -26,16 +28,37 @@ func tcpServe(addr string, newClient func(dnet.StreamSession)) error {
 		return err
 	}
 
+	server = newServer()
+	go server.tcpServe(listener, newClient)
+
+	return nil
+}
+
+func (s *Server) Stop() {
+	close(s.closeChan)
+}
+
+func (s *Server) tcpServe(listener *net.TCPListener, newClient func(StreamSession)) {
+	// 关闭监听
+	defer listener.Close()
+
 	for {
+		select {
+		case <-s.closeChan:
+			return
+		default:
+		}
+
 		conn, err := listener.Accept()
 		if err != nil {
 			if ne, ok := err.(net.Error); ok && ne.Temporary() {
 				continue
 			} else {
-				return err
+				return
 			}
 		}
 
-		newClient(NewStreamSocket(conn))
+		newClient(NewSession(conn, s.closeChan))
 	}
+
 }

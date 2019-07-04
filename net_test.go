@@ -2,19 +2,19 @@ package dnet_test
 
 import (
 	"fmt"
-	"github.com/tagDong/dnet"
 	"github.com/tagDong/dnet/socket"
 	"testing"
 )
 
 func TestStartTcpServe(t *testing.T) {
-	socket.StartTcpServe("10.128.2.233:12345", func(session dnet.StreamSession) {
+	socket.StartTcpServe("10.128.2.233:12345", func(session socket.StreamSession) {
 		fmt.Println("newClient ", session.GetRemoteAddr())
-		session.StartReceive(func(bytes []byte) {
-			fmt.Println("Decode ", bytes)
+		session.Start(func(data interface{}) {
+			fmt.Println("Decode ", data)
 		})
 
 	})
 
 	fmt.Println("------")
+
 }

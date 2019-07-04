@@ -2,15 +2,14 @@ package main
 
 import (
 	"fmt"
-	"github.com/tagDong/dnet"
 	"github.com/tagDong/dnet/socket"
 )
 
 func main() {
-	socket.StartTcpServe("10.128.2.233:12345", func(session dnet.StreamSession) {
+	socket.StartTcpServe("10.128.2.252:12345", func(session socket.StreamSession) {
 		fmt.Println("newClient ", session.GetRemoteAddr())
-		session.StartReceive(func(bytes []byte) {
-			fmt.Println("read ", bytes)
+		session.Start(func(data interface{}) {
+			fmt.Println("read ", data)
 		})
 
 		session.Send([]byte{1, 2, 3, 4})
