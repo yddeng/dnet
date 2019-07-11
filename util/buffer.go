@@ -26,7 +26,7 @@ func NewBuffer(cap int) *Buffer {
 	}
 }
 
-func (b *Buffer) Size() int {
+func (b *Buffer) Len() int {
 	return b.woff
 }
 
@@ -40,10 +40,6 @@ func (b *Buffer) Reset(n int) {
 func (b *Buffer) Clear() {
 	b.buff = make([]byte, b.cap)
 	b.woff = 0
-}
-
-func (b *Buffer) Buff() []byte {
-	return b.buff
 }
 
 func (b *Buffer) ReadFrom(reader io.Reader) (int, error) {
@@ -112,18 +108,32 @@ func (b *Buffer) Uint32(bytes []byte) (uint32, error) {
 	return binary.BigEndian.Uint32(bytes), nil
 }
 
-func (b *Buffer) PutUint32(num uint32) {
+func (b *Buffer) AppendUint16(num uint16) {
+	var bt = make([]byte, 2)
+	binary.BigEndian.PutUint16(bt, num)
+	b.Write(bt)
+}
+
+func (b *Buffer) AppendUint32(num uint32) {
 	var bt = make([]byte, 4)
 	binary.BigEndian.PutUint32(bt, num)
 	b.Write(bt)
 }
 
+func (b *Buffer) AppendBytes(data []byte) {
+	b.Write(data)
+}
+
 //获取从start开始的len长度的数据
-func (b *Buffer) Bytes(start, len int) []byte {
+func (b *Buffer) ReadBytes(start, len int) []byte {
 	end := start + len
 	if end > b.woff {
 		return nil
 	}
 
 	return b.buff[start:end]
+}
+
+func (b *Buffer) Bytes() []byte {
+	return b.buff[:b.woff]
 }

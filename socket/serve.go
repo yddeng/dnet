@@ -2,23 +2,20 @@ package socket
 
 import (
 	"errors"
-	"github.com/tagDong/dnet/codec"
+	"github.com/tagDong/dnet"
+	"github.com/tagDong/dnet/codec/protobuf"
 	"github.com/tagDong/dnet/socket/tcp"
 	"net"
 )
 
 type Server struct {
-	closeChan chan bool // 关服标识
-	codec     codec.Codec
 }
 
-func newServer() *Server {
-	return &Server{closeChan: make(chan bool)}
+func NewServer() *Server {
+	return &Server{}
 }
 
-var server *Server
-
-func StartTcpServe(addr string, newClient func(StreamSession)) error {
+func (s *Server) StartTcpServe(addr string, newClient func(session dnet.Session)) error {
 	if newClient == nil {
 		return errors.New("newClient is nil")
 	}
@@ -28,27 +25,16 @@ func StartTcpServe(addr string, newClient func(StreamSession)) error {
 		return err
 	}
 
-	server = newServer()
-	go server.tcpServe(listener, newClient)
+	go s.tcpServe(listener, newClient)
 
 	return nil
 }
 
-func (s *Server) Stop() {
-	close(s.closeChan)
-}
-
-func (s *Server) tcpServe(listener *net.TCPListener, newClient func(StreamSession)) {
+func (s *Server) tcpServe(listener *net.TCPListener, newClient func(dnet.Session)) {
 	// 关闭监听
 	defer listener.Close()
 
 	for {
-		select {
-		case <-s.closeChan:
-			return
-		default:
-		}
-
 		conn, err := listener.Accept()
 		if err != nil {
 			if ne, ok := err.(net.Error); ok && ne.Temporary() {
@@ -58,7 +44,7 @@ func (s *Server) tcpServe(listener *net.TCPListener, newClient func(StreamSessio
 			}
 		}
 
-		newClient(NewSession(conn, s.closeChan))
+		newClient(NewSession(conn, protobuf.NewEncode(), protobuf.NewReader()))
 	}
 
 }
