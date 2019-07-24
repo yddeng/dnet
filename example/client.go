@@ -3,8 +3,10 @@ package main
 import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
-	"github.com/tagDong/dnet/codec/protobuf"
+	"github.com/tagDong/dnet"
+	"github.com/tagDong/dnet/codec"
 	"github.com/tagDong/dnet/example/pb"
+	"github.com/tagDong/dnet/module/message"
 	"github.com/tagDong/dnet/socket"
 	"github.com/tagDong/dnet/socket/tcp"
 )
@@ -17,12 +19,13 @@ func main() {
 	}
 	fmt.Printf("conn ok,remote:%s ,local:%s\n", conn.RemoteAddr(), conn.LocalAddr())
 
-	session := socket.NewSession(conn, protobuf.NewEncode(), protobuf.NewReader())
+	session := socket.NewSession(conn, codec.NewCodec(pb.PbMate))
 	session.Start(func(data interface{}) {
-		fmt.Println("read ", data)
+		fmt.Println("read ", data.(dnet.Message).GetData())
+		//session.Send(message.NewMessage(0, &pb.EchoToS{Msg: proto.String("hi server 1")}))
 	})
 
-	session.Send(&pb.EchoToS{Msg: proto.String("hi server")})
+	session.Send(message.NewMessage(0, &pb.EchoToS{Msg: proto.String("hi server")}))
 
 	select {}
 

@@ -3,16 +3,20 @@ package socket
 import (
 	"errors"
 	"github.com/tagDong/dnet"
-	"github.com/tagDong/dnet/codec/protobuf"
+	"github.com/tagDong/dnet/codec"
+	"github.com/tagDong/dnet/module/protocol"
 	"github.com/tagDong/dnet/socket/tcp"
 	"net"
 )
 
 type Server struct {
+	protoc *protocol.Protocol
 }
 
-func NewServer() *Server {
-	return &Server{}
+func NewServer(protoc *protocol.Protocol) *Server {
+	return &Server{
+		protoc: protoc,
+	}
 }
 
 func (s *Server) StartTcpServe(addr string, newClient func(session dnet.Session)) error {
@@ -44,7 +48,7 @@ func (s *Server) tcpServe(listener *net.TCPListener, newClient func(dnet.Session
 			}
 		}
 
-		newClient(NewSession(conn, protobuf.NewEncode(), protobuf.NewReader()))
+		newClient(NewSession(conn, codec.NewCodec(s.protoc)))
 	}
 
 }

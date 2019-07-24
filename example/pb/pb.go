@@ -1,8 +1,14 @@
 package pb
 
-import "github.com/tagDong/dnet/codec/protobuf"
+import (
+	"github.com/tagDong/dnet/codec/protobuf"
+	"github.com/tagDong/dnet/module/protocol"
+)
+
+var PbMate *protocol.Protocol
 
 func init() {
-	protobuf.Register(1, &EchoToS{})
-	protobuf.Register(2, &EchoToC{})
+	PbMate = protocol.NewProtocol(protobuf.Protobuf{})
+	PbMate.RegisterIDMsg(1, &EchoToS{})
+	PbMate.RegisterIDMsg(2, &EchoToC{})
 }

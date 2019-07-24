@@ -6,20 +6,29 @@ import (
 )
 
 func TestNewBuffer(t *testing.T) {
-	buffer := NewBuffer(10)
-	buffer.Write([]byte{0, 0, 0, 5, 4, 5, 6, 1, 3, 1})
-	fmt.Println(buffer.Bytes())
+	buffer := NewBuffer(20)
+	buffer.Write([]byte{0, 5, 4, 5, 6, 1, 3, 1})
+	fmt.Println(buffer.Peek(), buffer.Len())
 
-	u32, err := buffer.Uint32(buffer.ReadBytes(0, 4))
-	fmt.Println(u32, err)
+	u16, err := buffer.ReadUint16BE()
+	fmt.Println(u16, err)
+	fmt.Println(buffer.Peek(), buffer.Len())
 
-	buffer.Reset(4)
-	fmt.Println(buffer.Bytes())
+	buffer.AppendUint32BE(25)
+	fmt.Println(buffer.Peek(), buffer.Len())
 
-	buffer.AppendUint32(25)
-	fmt.Println(buffer.Bytes())
+	buffer.AppendUint16BE(56)
+	fmt.Println(buffer.Peek(), buffer.Len())
 
-	buffer.AppendUint16(56)
-	fmt.Println(buffer.Bytes())
+	test, err := buffer.ReadBytes(4)
+	fmt.Println(test, err)
+	fmt.Println(buffer.Peek(), buffer.Len())
 
+	buffer.ReadUint16BE()
+	fmt.Println(test, err)
+	fmt.Println(buffer.Peek())
+
+	bt := buffer.Peek()
+	bt[0] = 255
+	fmt.Println(buffer.Peek())
 }

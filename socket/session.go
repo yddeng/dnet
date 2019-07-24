@@ -19,31 +19,30 @@ const sendChanSize = 1024
 
 type Session struct {
 	conn         net.Conn
-	uData        interface{}
-	readTimeout  time.Duration
-	writeTimeout time.Duration
+	uData        interface{}   //用户数据
+	readTimeout  time.Duration // 读取超时
+	writeTimeout time.Duration // 发送超时
 
-	reader   dnet.Reader
-	encode   dnet.Encode
-	sendChan chan interface{}
+	codec    dnet.Codec        //编解码器
+	sendChan chan dnet.Message //发送队列
 
-	callback func(interface{})
+	callback func(interface{}) //消息回调
 
 	closeChan chan bool //当前连接关闭
 	lock      sync.Mutex
 }
 
-func NewSession(conn net.Conn, e dnet.Encode, r dnet.Reader) *Session {
+func NewSession(conn net.Conn, codec dnet.Codec) *Session {
 	return &Session{
 		conn:      conn,
 		uData:     nil,
-		encode:    e,
-		reader:    r,
-		sendChan:  make(chan interface{}, sendChanSize),
+		codec:     codec,
+		sendChan:  make(chan dnet.Message, sendChanSize),
 		closeChan: make(chan bool),
 	}
 }
 
+//读写超时
 func (this *Session) SetTimeout(readTimeout, writeTimeout time.Duration) {
 	defer this.lock.Unlock()
 	this.lock.Lock()
@@ -52,6 +51,7 @@ func (this *Session) SetTimeout(readTimeout, writeTimeout time.Duration) {
 	this.writeTimeout = writeTimeout
 }
 
+//对端地址
 func (this *Session) GetRemoteAddr() string {
 	return this.conn.RemoteAddr().String()
 }
@@ -64,17 +64,10 @@ func (this *Session) GetUserData() interface{} {
 	return this.uData
 }
 
-func (this *Session) SetEncode(e dnet.Encode) {
-	this.encode = e
-}
-
-func (this *Session) SetReader(r dnet.Reader) {
-	this.reader = r
-}
-
+//开启消息处理
 func (this *Session) Start(cb func(interface{})) {
 
-	if this.encode == nil || this.reader == nil {
+	if this.codec == nil {
 		return
 	}
 
@@ -102,7 +95,7 @@ func (this *Session) recvMsg() {
 			this.conn.SetReadDeadline(time.Now().Add(this.readTimeout))
 		}
 
-		msg, err := this.reader.Receive(this.conn)
+		msg, err := this.codec.Decode(this.conn)
 
 		if err != nil {
 			if err == io.EOF {
@@ -131,7 +124,7 @@ func (this *Session) sendMsg() {
 				this.conn.SetWriteDeadline(time.Now().Add(this.writeTimeout))
 			}
 
-			data, err := this.encode.Pack(msg)
+			data, err := this.codec.Encode(msg.(dnet.Message))
 			if err != nil {
 				this.Close()
 			}
@@ -145,8 +138,8 @@ func (this *Session) sendMsg() {
 	}
 }
 
-func (this *Session) Send(data interface{}) {
-	this.sendChan <- data
+func (this *Session) Send(msg dnet.Message) {
+	this.sendChan <- msg
 }
 
 func (this *Session) Close() error {

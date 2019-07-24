@@ -7,12 +7,12 @@ import (
 type Session interface {
 	// 获取远端地址
 	GetRemoteAddr() string
-	// 开启数据接收
+	// 开启数据接收处理
 	Start(func(interface{}))
-	//读写超时
+	// 读写超时
 	SetTimeout(readTimeout, writeTimeout time.Duration)
-	//发送数据
-	Send(data interface{})
+	// 发送数据
+	Send(msg Message)
 	// 给session绑定用户数据
 	SetUserData(ud interface{})
 	// 获取用户数据

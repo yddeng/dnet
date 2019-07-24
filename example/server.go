@@ -5,27 +5,28 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/tagDong/dnet"
 	"github.com/tagDong/dnet/example/pb"
-	handler2 "github.com/tagDong/dnet/handler"
+	"github.com/tagDong/dnet/module/handler"
+	"github.com/tagDong/dnet/module/message"
 	"github.com/tagDong/dnet/socket"
 )
 
-func echoToC(session dnet.Session, msg proto.Message) {
-	data := msg.(*pb.EchoToS)
-	fmt.Println(data.GetMsg())
+func echoToC(session dnet.Session, msg dnet.Message) {
+	data := msg.GetData().(*pb.EchoToS)
+	fmt.Println("echo", data.GetMsg())
 
-	session.Send(&pb.EchoToC{Msg: proto.String("hello client")})
+	session.Send(message.NewMessage(0, &pb.EchoToC{Msg: proto.String("hello client")}))
 }
 
 func main() {
 
-	handler := handler2.NewHandler()
-	handler.Register(&pb.EchoToS{}, echoToC)
+	gHandler := handler.NewHandler()
+	gHandler.RegisterCallBack(&pb.EchoToS{}, echoToC)
 
-	server := socket.NewServer()
+	server := socket.NewServer(pb.PbMate)
 	server.StartTcpServe("10.128.2.252:12345", func(session dnet.Session) {
 		fmt.Println("newClient ", session.GetRemoteAddr())
 		session.Start(func(data interface{}) {
-			handler.Dispatch(session, data.(proto.Message))
+			gHandler.Dispatch(session, data.(dnet.Message))
 		})
 
 	})
