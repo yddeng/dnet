@@ -5,6 +5,11 @@ import (
 	"reflect"
 )
 
+/*
+ 事件分发器
+ 每一条协议注册一个处理函数
+*/
+
 type handler func(dnet.Session, dnet.Message)
 
 type Handler struct {
