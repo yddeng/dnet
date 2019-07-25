@@ -8,6 +8,7 @@ import (
 	"github.com/tagDong/dnet/module/handler"
 	"github.com/tagDong/dnet/module/message"
 	"github.com/tagDong/dnet/socket"
+	"time"
 )
 
 func echoToC(session dnet.Session, msg dnet.Message) {
@@ -22,8 +23,8 @@ func main() {
 	gHandler := handler.NewHandler()
 	gHandler.RegisterCallBack(&pb.EchoToS{}, echoToC)
 
-	server := socket.NewServer(pb.PbMate)
-	server.StartTcpServe("10.128.2.252:12345", func(session dnet.Session) {
+	socket.StartTcpServe("10.128.2.252:12345", func(session dnet.Session) {
+		session.SetTimeout(8*time.Second, 0)
 		fmt.Println("newClient ", session.GetRemoteAddr())
 		session.Start(func(data interface{}) {
 			gHandler.Dispatch(session, data.(dnet.Message))

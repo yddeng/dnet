@@ -5,10 +5,9 @@ import (
 	"github.com/tagDong/dnet/module/protocol"
 )
 
-var PbMate *protocol.Protocol
-
 func init() {
-	PbMate = protocol.NewProtocol(protobuf.Protobuf{})
-	PbMate.RegisterIDMsg(1, &EchoToS{})
-	PbMate.RegisterIDMsg(2, &EchoToC{})
+	protocol.InitProtocol(protobuf.Protobuf{})
+
+	protocol.RegisterIDMsg(1, &EchoToS{})
+	protocol.RegisterIDMsg(2, &EchoToC{})
 }

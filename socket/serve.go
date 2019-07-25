@@ -4,22 +4,11 @@ import (
 	"errors"
 	"github.com/tagDong/dnet"
 	"github.com/tagDong/dnet/codec"
-	"github.com/tagDong/dnet/module/protocol"
 	"github.com/tagDong/dnet/socket/tcp"
 	"net"
 )
 
-type Server struct {
-	protoc *protocol.Protocol
-}
-
-func NewServer(protoc *protocol.Protocol) *Server {
-	return &Server{
-		protoc: protoc,
-	}
-}
-
-func (s *Server) StartTcpServe(addr string, newClient func(session dnet.Session)) error {
+func StartTcpServe(addr string, newClient func(session dnet.Session)) error {
 	if newClient == nil {
 		return errors.New("newClient is nil")
 	}
@@ -29,12 +18,12 @@ func (s *Server) StartTcpServe(addr string, newClient func(session dnet.Session)
 		return err
 	}
 
-	go s.tcpServe(listener, newClient)
+	go tcpServe(listener, newClient)
 
 	return nil
 }
 
-func (s *Server) tcpServe(listener *net.TCPListener, newClient func(dnet.Session)) {
+func tcpServe(listener *net.TCPListener, newClient func(dnet.Session)) {
 	// 关闭监听
 	defer listener.Close()
 
@@ -48,7 +37,7 @@ func (s *Server) tcpServe(listener *net.TCPListener, newClient func(dnet.Session
 			}
 		}
 
-		newClient(NewSession(conn, codec.NewCodec(s.protoc)))
+		newClient(NewSession(conn, codec.NewCodec()))
 	}
 
 }

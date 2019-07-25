@@ -19,12 +19,14 @@ func main() {
 	}
 	fmt.Printf("conn ok,remote:%s ,local:%s\n", conn.RemoteAddr(), conn.LocalAddr())
 
-	session := socket.NewSession(conn, codec.NewCodec(pb.PbMate))
+	session := socket.NewSession(conn, codec.NewCodec())
 	session.Start(func(data interface{}) {
 		fmt.Println("read ", data.(dnet.Message).GetData())
 		//session.Send(message.NewMessage(0, &pb.EchoToS{Msg: proto.String("hi server 1")}))
 	})
 
+	session.Send(message.NewMessage(0, &pb.EchoToS{Msg: proto.String("hi server")}))
+	session.Send(message.NewMessage(0, &pb.EchoToS{Msg: proto.String("hi server")}))
 	session.Send(message.NewMessage(0, &pb.EchoToS{Msg: proto.String("hi server")}))
 
 	select {}

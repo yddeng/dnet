@@ -21,13 +21,11 @@ const (
 
 type Codec struct {
 	*Decoder
-	procol *protocol.Protocol
 }
 
-func NewCodec(procol *protocol.Protocol) *Codec {
+func NewCodec() *Codec {
 	return &Codec{
 		Decoder: &Decoder{readBuf: util.NewBuffer(buffSize)},
-		procol:  procol,
 	}
 }
 
@@ -77,7 +75,7 @@ func (decoder *Codec) unPack() (dnet.Message, error) {
 
 	data, _ := decoder.readBuf.ReadBytes(int(decoder.msgLen))
 
-	msg, err := decoder.procol.Unmarshal(decoder.msgID, data)
+	msg, err := protocol.Unmarshal(decoder.msgID, data)
 	if err != nil {
 		return nil, err
 	}
@@ -93,7 +91,7 @@ func (decoder *Codec) unPack() (dnet.Message, error) {
 //编码
 func (encoder *Codec) Encode(msg dnet.Message) ([]byte, error) {
 
-	msgID, data, err := encoder.procol.Marshal(msg.GetData())
+	msgID, data, err := protocol.Marshal(msg.GetData())
 	if err != nil {
 		return nil, err
 	}

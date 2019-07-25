@@ -127,10 +127,13 @@ func (this *Session) sendMsg() {
 			data, err := this.codec.Encode(msg.(dnet.Message))
 			if err != nil {
 				this.Close()
+				log.Println("encode err: ", err.Error())
+				return
 			}
 
 			_, err = this.conn.Write(data)
 			if err != nil {
+				log.Println("write err: ", err.Error())
 				this.Close()
 			}
 		}
