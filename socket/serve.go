@@ -3,7 +3,6 @@ package socket
 import (
 	"errors"
 	"github.com/tagDong/dnet"
-	"github.com/tagDong/dnet/codec"
 	"github.com/tagDong/dnet/socket/tcp"
 	"net"
 )
@@ -37,7 +36,16 @@ func tcpServe(listener *net.TCPListener, newClient func(dnet.Session)) {
 			}
 		}
 
-		newClient(NewSession(conn, codec.NewCodec()))
+		newClient(NewSession(conn))
 	}
 
+}
+
+func SessionConnector(addr string) (dnet.Session, error) {
+	conn, err := tcp.NewTcpConnector(addr)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewSession(conn), nil
 }

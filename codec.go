@@ -1,15 +1,15 @@
 package dnet
 
 import (
-	"net"
+	"io"
 )
 
 //编解码器
 type Codec interface {
 	//编码
-	Encode(Message) ([]byte, error)
+	Encode(interface{}) ([]byte, error)
 	//解码
-	Decode(net.Conn) (Message, error)
+	Decode(reader io.Reader) (interface{}, error)
 }
 
 //消息分发器

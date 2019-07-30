@@ -1,11 +1,12 @@
 package codec
 
 import (
+	"fmt"
 	"github.com/tagDong/dnet"
 	"github.com/tagDong/dnet/module/message"
 	"github.com/tagDong/dnet/module/protocol"
 	"github.com/tagDong/dnet/util"
-	"net"
+	"io"
 )
 
 // 编解码器
@@ -31,13 +32,13 @@ func NewCodec() *Codec {
 
 type Decoder struct {
 	readBuf *util.Buffer
-	msgLen  uint16
+	dataLen uint16
 	cmd     uint16
 	msgID   uint16
 }
 
 //解码
-func (decoder *Codec) Decode(conn net.Conn) (dnet.Message, error) {
+func (decoder *Codec) Decode(reader io.Reader) (interface{}, error) {
 	for {
 		msg, err := decoder.unPack()
 
@@ -46,7 +47,7 @@ func (decoder *Codec) Decode(conn net.Conn) (dnet.Message, error) {
 			return msg, nil
 
 		} else if err == nil {
-			_, err1 := decoder.readBuf.ReadFrom(conn)
+			_, err1 := decoder.readBuf.ReadFrom(reader)
 			if err1 != nil {
 				return nil, err1
 			}
@@ -58,22 +59,22 @@ func (decoder *Codec) Decode(conn net.Conn) (dnet.Message, error) {
 
 func (decoder *Codec) unPack() (dnet.Message, error) {
 
-	if decoder.msgLen == 0 {
+	if decoder.dataLen == 0 {
 		if decoder.readBuf.Len() < headSize {
 			return nil, nil
 		}
 
-		decoder.msgLen, _ = decoder.readBuf.ReadUint16BE()
+		decoder.dataLen, _ = decoder.readBuf.ReadUint16BE()
 		decoder.cmd, _ = decoder.readBuf.ReadUint16BE()
 		decoder.msgID, _ = decoder.readBuf.ReadUint16BE()
 
 	}
 
-	if decoder.readBuf.Len() < int(decoder.msgLen) {
+	if decoder.readBuf.Len() < int(decoder.dataLen) {
 		return nil, nil
 	}
 
-	data, _ := decoder.readBuf.ReadBytes(int(decoder.msgLen))
+	data, _ := decoder.readBuf.ReadBytes(int(decoder.dataLen))
 
 	msg, err := protocol.Unmarshal(decoder.msgID, data)
 	if err != nil {
@@ -84,31 +85,40 @@ func (decoder *Codec) unPack() (dnet.Message, error) {
 	ret := message.NewMessage(seriNo, msg)
 
 	//将消息长度置为0，用于下一次验证
-	decoder.msgLen = 0
+	decoder.dataLen = 0
 	return ret, nil
 }
 
 //编码
-func (encoder *Codec) Encode(msg dnet.Message) ([]byte, error) {
+func (encoder *Codec) Encode(o interface{}) ([]byte, error) {
+
+	msg, ok := o.(dnet.Message)
+	if !ok {
+		return nil, fmt.Errorf("o'type is't dnet.Message")
+	}
 
 	msgID, data, err := protocol.Marshal(msg.GetData())
 	if err != nil {
 		return nil, err
 	}
 
-	msgLen := len(data) + headSize
+	dataLen := len(data)
+	if dataLen > buffSize-headSize {
+		return nil, fmt.Errorf("encode dataLen is too large,len: %d", dataLen)
+	}
 
+	msgLen := dataLen + headSize
 	buff := util.NewBuffer(msgLen)
 
 	//msgLen+cmd+msgID
 	//写入data长度
-	buff.AppendUint16BE(uint16(len(data)))
+	buff.WriteUint16BE(uint16(dataLen))
 	//写入cmd
-	buff.AppendUint16BE(msg.GetSerialNo())
+	buff.WriteUint16BE(msg.GetSerialNo())
 	//msgID
-	buff.AppendUint16BE(msgID)
+	buff.WriteUint16BE(msgID)
 	//data数据
-	buff.AppendBytes(data)
+	buff.WriteBytes(data)
 
 	//fmt.Println("encode", len(data), msgID, msg.GetSerialNo(), data, buff.Peek(), buff.Len())
 

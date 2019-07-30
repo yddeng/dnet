@@ -23,8 +23,8 @@ type Session struct {
 	readTimeout  time.Duration // 读取超时
 	writeTimeout time.Duration // 发送超时
 
-	codec    dnet.Codec        //编解码器
-	sendChan chan dnet.Message //发送队列
+	codec    dnet.Codec  //编解码器
+	sendChan chan []byte //发送队列
 
 	callback func(interface{}) //消息回调
 
@@ -32,12 +32,11 @@ type Session struct {
 	lock      sync.Mutex
 }
 
-func NewSession(conn net.Conn, codec dnet.Codec) *Session {
+func NewSession(conn net.Conn) *Session {
 	return &Session{
 		conn:      conn,
 		uData:     nil,
-		codec:     codec,
-		sendChan:  make(chan dnet.Message, sendChanSize),
+		sendChan:  make(chan []byte, sendChanSize),
 		closeChan: make(chan bool),
 	}
 }
@@ -54,6 +53,10 @@ func (this *Session) SetTimeout(readTimeout, writeTimeout time.Duration) {
 //对端地址
 func (this *Session) GetRemoteAddr() string {
 	return this.conn.RemoteAddr().String()
+}
+
+func (this *Session) SetCodec(codec dnet.Codec) {
+	this.codec = codec
 }
 
 func (this *Session) SetUserData(ud interface{}) {
@@ -118,20 +121,13 @@ func (this *Session) sendMsg() {
 		select {
 		case <-this.closeChan:
 			return
-		case msg := <-this.sendChan:
+		case data := <-this.sendChan:
 
 			if this.writeTimeout > 0 {
 				this.conn.SetWriteDeadline(time.Now().Add(this.writeTimeout))
 			}
 
-			data, err := this.codec.Encode(msg.(dnet.Message))
-			if err != nil {
-				this.Close()
-				log.Println("encode err: ", err.Error())
-				return
-			}
-
-			_, err = this.conn.Write(data)
+			_, err := this.conn.Write(data)
 			if err != nil {
 				log.Println("write err: ", err.Error())
 				this.Close()
@@ -141,8 +137,16 @@ func (this *Session) sendMsg() {
 	}
 }
 
-func (this *Session) Send(msg dnet.Message) {
-	this.sendChan <- msg
+func (this *Session) Send(o interface{}) error {
+
+	data, err := this.codec.Encode(o)
+	if err != nil {
+		return err
+	}
+
+	this.sendChan <- data
+
+	return nil
 }
 
 func (this *Session) Close() error {

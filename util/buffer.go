@@ -1,8 +1,10 @@
 package util
 
 import (
+	"encoding/binary"
 	"errors"
 	"io"
+	"unsafe"
 )
 
 var (
@@ -27,10 +29,12 @@ func NewBuffer(cap int) *Buffer {
 	}
 }
 
+//已用
 func (b *Buffer) Len() int {
 	return b.woff - b.roff
 }
 
+//未用
 func (b *Buffer) UsableLen() int {
 	return b.cap - (b.woff - b.roff)
 }
@@ -41,6 +45,7 @@ func (b *Buffer) reset() {
 	b.roff = 0
 }
 
+//拷贝一份数据，不重置
 func (b *Buffer) Peek() []byte {
 	var ret = make([]byte, b.woff-b.roff)
 	copy(ret, b.buff[b.roff:b.woff])
@@ -122,32 +127,50 @@ func (b *Buffer) Write(bytes []byte) (n int, err error) {
 	return needSz, nil
 }
 
-func (b *Buffer) AppendUint16BE(num uint16) {
+func (b *Buffer) WriteUint16BE(num uint16) {
 	var bt = make([]byte, 2)
-	PutUint16BE(bt, num)
+	binary.BigEndian.PutUint16(bt, num)
 	b.Write(bt)
-}
-
-func (b *Buffer) AppendUint32BE(num uint32) {
-	var bt = make([]byte, 4)
-	PutUint32BE(bt, num)
-	b.Write(bt)
-}
-
-func (b *Buffer) AppendBytes(data []byte) {
-	b.Write(data)
 }
 
 func (b *Buffer) ReadUint16BE() (uint16, error) {
-	if b.woff-b.roff < 2 {
-		return 0, ErrData
+	num, err := b.ReadBytes(2)
+	if err != nil {
+		return 0, err
 	}
+	return binary.BigEndian.Uint16(num), nil
+}
 
-	var num = make([]byte, 2)
-	copy(num, b.buff[b.roff:b.roff+2])
-	b.roff += 2
+func (b *Buffer) WriteUint32BE(num uint32) {
+	var bt = make([]byte, 4)
+	binary.BigEndian.PutUint32(bt, num)
+	b.Write(bt)
+}
 
-	return GetUint16BE(num), nil
+func (b *Buffer) ReadUint32BE() (uint32, error) {
+	num, err := b.ReadBytes(4)
+	if err != nil {
+		return 0, err
+	}
+	return binary.BigEndian.Uint32(num), nil
+}
+
+func (b *Buffer) WriteUint64BE(num uint64) {
+	var bt = make([]byte, 8)
+	binary.BigEndian.PutUint64(bt, num)
+	b.Write(bt)
+}
+
+func (b *Buffer) ReadUint64BE() (uint64, error) {
+	num, err := b.ReadBytes(8)
+	if err != nil {
+		return 0, err
+	}
+	return binary.BigEndian.Uint64(num), nil
+}
+
+func (b *Buffer) WriteBytes(data []byte) {
+	b.Write(data)
 }
 
 //获取len长度的数据
@@ -160,6 +183,39 @@ func (b *Buffer) ReadBytes(len int) ([]byte, error) {
 	var ret = make([]byte, len)
 	copy(ret, b.buff[b.roff:end])
 	b.roff += len
+
+	return ret, nil
+}
+
+func (b *Buffer) ReadByte() (byte, error) {
+	if b.Len() < 1 {
+		return 0, ErrData
+	}
+
+	ret := b.buff[b.roff]
+	b.roff++
+
+	return ret, nil
+}
+
+func (b *Buffer) WriteByte(c byte) {
+	b.Write([]byte{c})
+}
+
+func (b *Buffer) WriteString(str string) {
+	data := []byte(str)
+	b.Write(data)
+}
+
+//获取len长度的数据
+func (b *Buffer) ReadString(len int) (string, error) {
+	bytes, err := b.ReadBytes(len)
+	if err != nil {
+		return "", err
+	}
+
+	//不用拷贝
+	ret := *(*string)(unsafe.Pointer(&bytes))
 
 	return ret, nil
 }
