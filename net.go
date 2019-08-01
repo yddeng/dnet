@@ -1,13 +1,12 @@
-package socket
+package dnet
 
 import (
 	"errors"
-	"github.com/tagDong/dnet"
-	"github.com/tagDong/dnet/socket/tcp"
+	"github.com/tagDong/dnet/net/tcp"
 	"net"
 )
 
-func StartTcpServe(addr string, newClient func(session dnet.Session)) error {
+func StartTcpServe(addr string, newClient func(session Session)) error {
 	if newClient == nil {
 		return errors.New("newClient is nil")
 	}
@@ -22,7 +21,7 @@ func StartTcpServe(addr string, newClient func(session dnet.Session)) error {
 	return nil
 }
 
-func tcpServe(listener *net.TCPListener, newClient func(dnet.Session)) {
+func tcpServe(listener *net.TCPListener, newClient func(Session)) {
 	// 关闭监听
 	defer listener.Close()
 
@@ -35,17 +34,18 @@ func tcpServe(listener *net.TCPListener, newClient func(dnet.Session)) {
 				return
 			}
 		}
+		//fmt.Println(conn, reflect.TypeOf(conn))
 
-		newClient(NewSession(conn))
+		newClient(NewSocket(conn))
 	}
 
 }
 
-func SessionConnector(addr string) (dnet.Session, error) {
+func TCPDial(addr string) (Session, error) {
 	conn, err := tcp.NewTcpConnector(addr)
 	if err != nil {
 		return nil, err
 	}
 
-	return NewSession(conn), nil
+	return NewSocket(conn), nil
 }

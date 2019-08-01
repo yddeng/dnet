@@ -2,9 +2,8 @@ package codec
 
 import (
 	"fmt"
-	"github.com/tagDong/dnet"
-	"github.com/tagDong/dnet/module/message"
-	"github.com/tagDong/dnet/module/protocol"
+	"github.com/tagDong/dnet/example/module/message"
+	"github.com/tagDong/dnet/example/module/protocol"
 	"github.com/tagDong/dnet/util"
 	"io"
 )
@@ -57,7 +56,7 @@ func (decoder *Codec) Decode(reader io.Reader) (interface{}, error) {
 	}
 }
 
-func (decoder *Codec) unPack() (dnet.Message, error) {
+func (decoder *Codec) unPack() (*message.Message, error) {
 
 	if decoder.dataLen == 0 {
 		if decoder.readBuf.Len() < headSize {
@@ -92,7 +91,7 @@ func (decoder *Codec) unPack() (dnet.Message, error) {
 //编码
 func (encoder *Codec) Encode(o interface{}) ([]byte, error) {
 
-	msg, ok := o.(dnet.Message)
+	msg, ok := o.(*message.Message)
 	if !ok {
 		return nil, fmt.Errorf("o'type is't dnet.Message")
 	}

@@ -5,7 +5,6 @@ import (
 )
 
 type Message struct {
-	name     string
 	serialNO uint16
 	data     interface{}
 }
