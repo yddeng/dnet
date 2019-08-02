@@ -152,11 +152,11 @@ func (this *Socket) receiveRoutine() {
 //发送线程
 func (this *Socket) sendRoutine() {
 
+	defer this.close()
 	for (this.getFlag() & wclosed) == 0 {
 
 		data, isOpen := <-this.sendChan
 		if !isOpen {
-			this.close()
 			break
 		}
 		if this.writeTimeout > 0 {
