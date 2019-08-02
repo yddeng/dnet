@@ -1,15 +1,16 @@
-package dnet
+package dnet_test
 
 import (
 	"fmt"
+	"github.com/tagDong/dnet"
 	"testing"
 )
 
 func TestStartTcpServe(t *testing.T) {
 	addr := "localhost:1234"
-	_ = StartTcpServe(addr, func(session Session) {
+	_ = dnet.StartTcpServe(addr, func(session dnet.Session) {
 		fmt.Println("new client", session.RemoteAddr().String())
-		session.SetCodec(NewDefCodec())
+		session.SetCodec(dnet.NewDefCodec())
 		//session.SetTimeout(3*time.Second, 0)
 		session.SetCloseCallBack(func(reason string) {
 			fmt.Println("session close", reason)
@@ -24,13 +25,14 @@ func TestStartTcpServe(t *testing.T) {
 			}
 		})
 	})
+
 }
 
 func TestTCPDial(t *testing.T) {
 	addr := "localhost:1234"
 
-	session, _ := TCPDial(addr)
-	session.SetCodec(NewDefCodec())
+	session, _ := dnet.TCPDial(addr)
+	session.SetCodec(dnet.NewDefCodec())
 	session.SetCloseCallBack(func(reason string) {
 		fmt.Println("session close", reason)
 	})
