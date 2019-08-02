@@ -20,6 +20,7 @@ func TestStartTcpServe(t *testing.T) {
 			} else {
 				data := msg.([]byte)
 				fmt.Println("server read", data)
+				session.Send(data)
 			}
 		})
 	})
@@ -27,11 +28,8 @@ func TestStartTcpServe(t *testing.T) {
 
 func TestTCPDial(t *testing.T) {
 	addr := "localhost:1234"
-	session, err := TCPDial(addr)
-	if err != nil {
-		panic(err)
-	}
 
+	session, _ := TCPDial(addr)
 	session.SetCodec(NewDefCodec())
 	session.SetCloseCallBack(func(reason string) {
 		fmt.Println("session close", reason)
