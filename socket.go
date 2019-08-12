@@ -14,6 +14,7 @@ var (
 	errNoCodec       = fmt.Errorf("Socket without codec")
 	errNoMsgCallBack = fmt.Errorf("Socket without msgcallback")
 	errSendMsgNil    = fmt.Errorf("Socket send msg is nil")
+	errSendChanFull  = fmt.Errorf("Socket send chan is full")
 )
 
 const (
@@ -176,6 +177,11 @@ func (this *Socket) sendRoutine() {
 func (this *Socket) Send(o interface{}) error {
 	if o == nil {
 		return errSendMsgNil
+	}
+
+	//非堵塞
+	if len(this.sendChan) == sendChanSize {
+		return errSendChanFull
 	}
 
 	this.lock.Lock()
