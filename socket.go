@@ -224,6 +224,17 @@ func (this *Socket) Close(reason string) {
 	close(this.sendChan)
 }
 
+func (this *Socket) CloseRead() {
+	this.lock.Lock()
+	defer this.lock.Unlock()
+	if (this.flag & rclosed) > 0 {
+		return
+	}
+
+	this.flag |= rclosed
+	this.conn.(*net.TCPConn).CloseRead()
+}
+
 func (this *Socket) close() {
 	this.conn.Close()
 	this.lock.Lock()
