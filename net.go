@@ -2,7 +2,7 @@ package dnet
 
 import (
 	"errors"
-	"github.com/tagDong/dnet/net/tcp"
+	"github.com/yddeng/dnet/net/tcp"
 	"net"
 )
 

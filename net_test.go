@@ -2,7 +2,7 @@ package dnet_test
 
 import (
 	"fmt"
-	"github.com/tagDong/dnet"
+	"github.com/yddeng/dnet"
 	"testing"
 )
 

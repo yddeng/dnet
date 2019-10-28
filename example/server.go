@@ -3,11 +3,11 @@ package main
 import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
-	"github.com/tagDong/dnet"
-	"github.com/tagDong/dnet/example/module/codec"
-	"github.com/tagDong/dnet/example/module/handler"
-	"github.com/tagDong/dnet/example/module/message"
-	"github.com/tagDong/dnet/example/pb"
+	"github.com/yddeng/dnet"
+	"github.com/yddeng/dnet/example/module/codec"
+	"github.com/yddeng/dnet/example/module/handler"
+	"github.com/yddeng/dnet/example/module/message"
+	"github.com/yddeng/dnet/example/pb"
 	"reflect"
 	"time"
 )
@@ -24,8 +24,9 @@ func main() {
 	gHandler := handler.NewHandler()
 	gHandler.RegisterCallBack(&pb.EchoToS{}, echoToC)
 
-	_ = dnet.StartTcpServe("10.128.2.252:12345", func(session dnet.Session) {
-		session.SetTimeout(3*time.Second, 0)
+	_ = dnet.StartTcpServe("127.0.0.1:12345", func(session dnet.Session) {
+		// 超时时间
+		session.SetTimeout(10*time.Second, 0)
 		session.SetCodec(codec.NewCodec())
 		session.SetCloseCallBack(func(reason string) {
 			fmt.Println("onClose", reason)

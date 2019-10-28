@@ -2,7 +2,7 @@ package dnet
 
 import (
 	"fmt"
-	"github.com/tagDong/dnet/util"
+	"github.com/yddeng/dnet/util"
 	"io"
 	"reflect"
 )

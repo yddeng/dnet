@@ -1,8 +1,8 @@
 package handler
 
 import (
-	"github.com/tagDong/dnet"
-	"github.com/tagDong/dnet/example/module/message"
+	"github.com/yddeng/dnet"
+	"github.com/yddeng/dnet/example/module/message"
 	"reflect"
 )
 

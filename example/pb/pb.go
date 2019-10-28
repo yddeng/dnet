@@ -1,8 +1,8 @@
 package pb
 
 import (
-	"github.com/tagDong/dnet/example/module/codec/protobuf"
-	"github.com/tagDong/dnet/example/module/protocol"
+	"github.com/yddeng/dnet/example/module/codec/protobuf"
+	"github.com/yddeng/dnet/example/module/protocol"
 )
 
 func init() {

@@ -3,16 +3,16 @@ package main
 import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
-	"github.com/tagDong/dnet"
-	"github.com/tagDong/dnet/example/module/codec"
-	"github.com/tagDong/dnet/example/module/message"
-	"github.com/tagDong/dnet/example/pb"
+	"github.com/yddeng/dnet"
+	"github.com/yddeng/dnet/example/module/codec"
+	"github.com/yddeng/dnet/example/module/message"
+	"github.com/yddeng/dnet/example/pb"
 	"time"
 )
 
 func main() {
 
-	session, err := dnet.TCPDial("10.128.2.252:12345")
+	session, err := dnet.TCPDial("127.0.0.1:12345")
 	if err != nil {
 		panic(err)
 	}

@@ -2,9 +2,9 @@ package codec
 
 import (
 	"fmt"
-	"github.com/tagDong/dnet/example/module/message"
-	"github.com/tagDong/dnet/example/module/protocol"
-	"github.com/tagDong/dnet/util"
+	"github.com/yddeng/dnet/example/module/message"
+	"github.com/yddeng/dnet/example/module/protocol"
+	"github.com/yddeng/dnet/util"
 	"io"
 )
 
