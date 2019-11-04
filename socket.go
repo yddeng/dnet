@@ -63,6 +63,10 @@ func (this *Socket) LocalAddr() net.Addr {
 	return this.conn.LocalAddr()
 }
 
+func (this *Socket) NetConn() net.Conn {
+	return this.conn
+}
+
 //对端地址
 func (this *Socket) RemoteAddr() net.Addr {
 	return this.conn.RemoteAddr()
@@ -205,6 +209,30 @@ func (this *Socket) Send(o interface{}) error {
 
 	this.sendChan <- data
 
+	return nil
+}
+
+func (this *Socket) SendMsg(data []byte) error {
+	if len(data) == 0 {
+		return errSendMsgNil
+	}
+
+	//非堵塞
+	if len(this.sendChan) == sendChanSize {
+		return errSendChanFull
+	}
+
+	this.lock.Lock()
+	defer this.lock.Unlock()
+	if (this.flag & started) == 0 {
+		return errNotStarted
+	}
+
+	if (this.flag & wclosed) > 0 {
+		return errSocketClosed
+	}
+
+	this.sendChan <- data
 	return nil
 }
 

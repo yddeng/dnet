@@ -12,6 +12,8 @@ type Session interface {
 	  Start之前需设置编解码器，否则使用默认的编解码器
 	*/
 	SetCodec(codec Codec)
+	// conn
+	NetConn() net.Conn
 	// 获取远端地址
 	RemoteAddr() net.Addr
 	/*
@@ -24,6 +26,8 @@ type Session interface {
 	SetTimeout(readTimeout, writeTimeout time.Duration)
 	// 发送一个对象，经过编码发送出去
 	Send(o interface{}) error
+	// 发送数据，不经过编码器直接发送
+	SendMsg(data []byte) error
 	// 给session绑定用户数据
 	SetUserData(ud interface{})
 	// 获取用户数据
