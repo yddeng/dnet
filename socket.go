@@ -266,8 +266,8 @@ func (this *Socket) CloseRead() {
 func (this *Socket) close() {
 	this.conn.Close()
 	this.lock.Lock()
-	defer this.lock.Unlock()
 	this.flag |= closed
+	this.lock.Unlock()
 	if this.closeCallback != nil {
 		this.closeCallback(this.closeReason)
 	}
