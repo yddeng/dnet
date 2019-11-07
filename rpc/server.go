@@ -2,14 +2,15 @@ package rpc
 
 import (
 	"fmt"
-	"log"
 	"reflect"
 	"sync"
+	"sync/atomic"
 )
 
 type Server struct {
 	severCodec ServerCodec
 	methods    sync.Map //map[reflect.Type]*methodInfo
+	lastReqNo  uint64
 }
 
 type methodInfo struct {
@@ -19,16 +20,16 @@ type methodInfo struct {
 	needResp bool
 }
 
-func (server *Server) Register(method interface{}) {
+func (server *Server) Register(method interface{}) error {
 	mValue := reflect.ValueOf(method)
 	if mValue.Kind() != reflect.Func {
-		log.Fatalln("register rpc method is fail,need func(req pointer) or func(req pointer,resp pointer)")
+		return fmt.Errorf("register rpc method is fail,need func(req pointer) or func(req pointer,resp pointer)\n")
 	}
 
 	mType := reflect.TypeOf(method)
 
 	if mType.NumIn() < 1 || mType.NumIn() > 2 {
-		log.Fatalln("register rpc method is fail,need func(req pointer) or func(req pointer,resp pointer)")
+		return fmt.Errorf("register rpc method is fail,need func(req pointer) or func(req pointer,resp pointer)\n")
 	}
 
 	info := &methodInfo{
@@ -44,9 +45,10 @@ func (server *Server) Register(method interface{}) {
 	argType := mType.In(0)
 	_, ok := server.methods.Load(argType)
 	if ok {
-		log.Printf("duplicate method:%s", argType)
+		return fmt.Errorf("duplicate method:%s\n", argType)
 	}
 	server.methods.Store(argType, info)
+	return nil
 }
 
 func (server *Server) checkMethod(name reflect.Type, needResp bool) (*methodInfo, error) {
@@ -57,38 +59,38 @@ func (server *Server) checkMethod(name reflect.Type, needResp bool) (*methodInfo
 
 	m := method.(*methodInfo)
 	if m.needResp != needResp {
-		return nil, fmt.Errorf("invaild method:%s ,register needResp = %v : request needResp = %v",
+		return nil, fmt.Errorf("invaild method:%s,register needResp=%v but request needResp=%v",
 			name.String(), m.needResp, needResp)
 	}
 	return m, nil
 }
 
-func (server *Server) reply(channel RPCChannel, resp *Response) {
+func (server *Server) reply(channel RPCChannel, resp *Response) error {
 	data, err := server.severCodec.EncodeResponse(resp)
 	if err != nil {
-		log.Println(err)
-		return
+		return err
 	}
-	err = channel.SendResponse(data)
-	if err != nil {
-		log.Println(err)
-	}
+	return channel.SendResponse(data)
 }
 
-func (server *Server) OnRPCRequest(channel RPCChannel, data interface{}) {
-
+func (server *Server) OnRPCRequest(channel RPCChannel, data interface{}) error {
 	req, err := server.severCodec.DecodeRequest(data)
 	if err != nil {
-		log.Println(err)
-		return
+		return err
+	}
+
+	// 重复请求
+	if !atomic.CompareAndSwapUint64(&server.lastReqNo, req.SeqNo-1, req.SeqNo) {
+		return fmt.Errorf("repeated reqNo:%d\n", req.SeqNo)
 	}
 
 	name := reflect.TypeOf(req.Data)
 	method, err := server.checkMethod(name, req.NeedResp)
 	if err != nil {
-		server.reply(channel, &Response{SeqNo: req.SeqNo, Err: err})
-		log.Println(err)
-		return
+		if req.NeedResp {
+			_ = server.reply(channel, &Response{SeqNo: req.SeqNo, Err: err})
+		}
+		return err
 	}
 
 	var resp *Response
@@ -101,7 +103,7 @@ func (server *Server) OnRPCRequest(channel RPCChannel, data interface{}) {
 		method.method.Call([]reflect.Value{arg})
 	}
 
-	server.reply(channel, resp)
+	return server.reply(channel, resp)
 }
 
 func NewServer(severCodec ServerCodec) *Server {

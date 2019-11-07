@@ -19,14 +19,14 @@ type RPCChannel interface {
 
 type ServerCodec interface {
 	//编码
-	EncodeResponse(response *Response) ([]byte, error)
+	EncodeResponse(response *Response) (interface{}, error)
 	//解码
 	DecodeRequest(data interface{}) (*Request, error)
 }
 
 type ClientCodec interface {
 	//编码
-	EncodeRequest(request *Request) ([]byte, error)
+	EncodeRequest(request *Request) (interface{}, error)
 	//解码
 	DecodeResponse(data interface{}) (*Response, error)
 }

@@ -2,8 +2,8 @@ package rpc
 
 import (
 	"errors"
+	"fmt"
 	"github.com/yddeng/dutil/timingwheel"
-	"log"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -99,27 +99,27 @@ func (client *Client) Post(channel RPCChannel, req interface{}) error {
 	return channel.SendRequest(data)
 }
 
-func (client *Client) OnRPCResponse(date interface{}) {
+func (client *Client) OnRPCResponse(date interface{}) error {
 	resp, err := client.clientCodec.DecodeResponse(date)
 	if err != nil {
-		log.Println(err)
-		return
+		return err
 	}
 
 	v, ok := client.pending.Load(resp.SeqNo)
-	if ok {
-		call := v.(*Call)
-		call.callback(resp.Data, resp.Err)
-
-		if call.timer != nil {
-			//fmt.Println("delete timer", call.reqNo)
-			client.wheel.RemoveTimer(call.timer)
-		}
-		client.pending.Delete(resp.SeqNo)
-
-	} else {
-		log.Printf("rpc call reqNo:%d not found\n", resp.SeqNo)
+	if !ok {
+		return fmt.Errorf("rpc call reqNo:%d not found\n", resp.SeqNo)
 	}
+
+	call := v.(*Call)
+	call.callback(resp.Data, resp.Err)
+
+	if call.timer != nil {
+		//fmt.Println("delete timer", call.reqNo)
+		client.wheel.RemoveTimer(call.timer)
+	}
+	client.pending.Delete(resp.SeqNo)
+	return nil
+
 }
 
 func NewClient(clientCodec ClientCodec) *Client {
