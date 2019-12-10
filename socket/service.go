@@ -47,23 +47,27 @@ func (l *TcpListener) StartService(newClient func(session dnet.Session)) error {
 		return errors.New("tcpListener is started")
 	}
 
-	for {
-		conn, err := l.listener.Accept()
-		if err != nil {
-			if ne, ok := err.(net.Error); ok && ne.Temporary() {
-				continue
-			} else {
-				return err
+	go func() {
+		for {
+			conn, err := l.listener.Accept()
+			if err != nil {
+				if ne, ok := err.(net.Error); ok && ne.Temporary() {
+					continue
+				} else {
+					log.Printf("listener err:%s", err)
+					return
+				}
 			}
+			newClient(tsocket.NewTcpSocket(conn))
 		}
-		newClient(tsocket.NewTcpSocket(conn))
-	}
+	}()
 
+	return nil
 }
 
 func (l *TcpListener) Close() {
 	if !atomic.CompareAndSwapInt32(&l.started, 1, 0) {
-		l.listener.Close()
+		_ = l.listener.Close()
 	}
 
 }
@@ -164,14 +168,16 @@ func (this *WSListener) StartService(newClient func(dnet.Session)) error {
 		newClient(sess)
 	})
 
-	err := http.Serve(this.listener, nil)
-	if err != nil {
-		log.Printf("http.Serve() failed:%s\n", err.Error())
-	}
+	go func() {
+		err := http.Serve(this.listener, nil)
+		if err != nil {
+			log.Printf("http.Serve() failed:%s\n", err.Error())
+		}
 
-	this.listener.Close()
+		_ = this.listener.Close()
+	}()
 
-	return err
+	return nil
 }
 
 func WSDial(addr, path string, timeout time.Duration) (dnet.Session, error) {
