@@ -29,7 +29,7 @@ func InitProtocol(protoc Protoc) {
 	}
 }
 
-func RegisterIDMsg(id uint16, msg interface{}) {
+func Register(id uint16, msg interface{}) {
 	if pProtocol == nil {
 		fmt.Errorf("protocol is nil,need init")
 		return
