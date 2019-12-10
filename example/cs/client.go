@@ -3,18 +3,19 @@ package main
 import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
-	"github.com/yddeng/dnet"
-	"github.com/yddeng/dnet/example/module/codec"
+	"github.com/yddeng/dnet/example/cs/codec"
 	"github.com/yddeng/dnet/example/module/message"
 	"github.com/yddeng/dnet/example/pb"
+	"github.com/yddeng/dnet/socket"
 	"time"
 )
 
 func main() {
-
-	session, err := dnet.TCPDial("127.0.0.1:12345")
+	addr := "localhost:1234"
+	session, err := socket.TCPDial("tcp", addr, 0)
 	if err != nil {
-		panic(err)
+		fmt.Println(err)
+		return
 	}
 	fmt.Printf("conn ok,remote:%s\n", session.RemoteAddr())
 

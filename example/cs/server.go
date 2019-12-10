@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
 	"github.com/yddeng/dnet"
-	"github.com/yddeng/dnet/example/module/codec"
+	"github.com/yddeng/dnet/example/cs/codec"
 	"github.com/yddeng/dnet/example/module/handler"
 	"github.com/yddeng/dnet/example/module/message"
 	"github.com/yddeng/dnet/example/pb"
+	"github.com/yddeng/dnet/socket"
 	"reflect"
 	"time"
 )
@@ -24,7 +25,15 @@ func main() {
 	gHandler := handler.NewHandler()
 	gHandler.RegisterCallBack(&pb.EchoToS{}, echoToC)
 
-	_ = dnet.StartTcpServe("127.0.0.1:12345", func(session dnet.Session) {
+	addr := "localhost:1234"
+	l, err := socket.NewTcpListener("tcp", addr)
+	if err != nil {
+		fmt.Println(1, err)
+		return
+	}
+
+	err = l.StartService(func(session dnet.Session) {
+		fmt.Println("new client", session.RemoteAddr().String())
 		// 超时时间
 		session.SetTimeout(10*time.Second, 0)
 		session.SetCodec(codec.NewCodec())
@@ -32,7 +41,7 @@ func main() {
 			fmt.Println("onClose", reason)
 		})
 		fmt.Println("newClient ", session.RemoteAddr(), reflect.TypeOf(session.RemoteAddr()))
-		_ = session.Start(func(data interface{}, err error) {
+		errr := session.Start(func(data interface{}, err error) {
 			//fmt.Println("data", data, "err", err)
 			if err != nil {
 				session.Close(err.Error())
@@ -40,8 +49,13 @@ func main() {
 				gHandler.Dispatch(session, data.(*message.Message))
 			}
 		})
-
+		if errr != nil {
+			fmt.Println(2, err)
+		}
 	})
+	if err != nil {
+		fmt.Println(3, err)
+	}
 
 	fmt.Println("server start on : 10.128.2.233:12345")
 	select {}

@@ -1,20 +1,21 @@
-package dnet
+package tcpsocket
 
 import (
 	"fmt"
+	"github.com/yddeng/dnet"
 	"net"
 	"sync"
 	"time"
 )
 
 var (
-	errSocketStarted = fmt.Errorf("Socket is already started")
-	errNotStarted    = fmt.Errorf("Socket is not started")
-	errSocketClosed  = fmt.Errorf("Socket is closed")
-	errNoCodec       = fmt.Errorf("Socket without codec")
-	errNoMsgCallBack = fmt.Errorf("Socket without msgcallback")
-	errSendMsgNil    = fmt.Errorf("Socket send msg is nil")
-	errSendChanFull  = fmt.Errorf("Socket send chan is full")
+	errSocketStarted = fmt.Errorf("TcpSocket is already started")
+	errNotStarted    = fmt.Errorf("TcpSocket is not started")
+	errSocketClosed  = fmt.Errorf("TcpSocket is closed")
+	errNoCodec       = fmt.Errorf("TcpSocket without codec")
+	errNoMsgCallBack = fmt.Errorf("TcpSocket without msgcallback")
+	errSendMsgNil    = fmt.Errorf("TcpSocket send msg is nil")
+	errSendChanFull  = fmt.Errorf("TcpSocket send chan is full")
 )
 
 const (
@@ -26,14 +27,14 @@ const (
 
 const sendChanSize = 1024
 
-type Socket struct {
+type TcpSocket struct {
 	flag         byte
 	conn         net.Conn
 	uData        interface{}   //用户数据
 	readTimeout  time.Duration // 读超时
 	writeTimeout time.Duration // 写超时
 
-	codec    Codec       //编解码器
+	codec    dnet.Codec  //编解码器
 	sendChan chan []byte //发送队列
 
 	msgCallback   func(interface{}, error) //消息回调
@@ -43,15 +44,15 @@ type Socket struct {
 	lock sync.Mutex
 }
 
-func NewSocket(conn net.Conn) *Socket {
-	return &Socket{
+func NewTcpSocket(conn net.Conn) *TcpSocket {
+	return &TcpSocket{
 		conn:     conn,
 		sendChan: make(chan []byte, sendChanSize),
 	}
 }
 
 //读写超时
-func (this *Socket) SetTimeout(readTimeout, writeTimeout time.Duration) {
+func (this *TcpSocket) SetTimeout(readTimeout, writeTimeout time.Duration) {
 	defer this.lock.Unlock()
 	this.lock.Lock()
 
@@ -59,45 +60,45 @@ func (this *Socket) SetTimeout(readTimeout, writeTimeout time.Duration) {
 	this.writeTimeout = writeTimeout
 }
 
-func (this *Socket) LocalAddr() net.Addr {
+func (this *TcpSocket) LocalAddr() net.Addr {
 	return this.conn.LocalAddr()
 }
 
-func (this *Socket) NetConn() net.Conn {
+func (this *TcpSocket) NetConn() interface{} {
 	return this.conn
 }
 
 //对端地址
-func (this *Socket) RemoteAddr() net.Addr {
+func (this *TcpSocket) RemoteAddr() net.Addr {
 	return this.conn.RemoteAddr()
 }
 
-func (this *Socket) SetCodec(codec Codec) {
+func (this *TcpSocket) SetCodec(codec dnet.Codec) {
 	this.lock.Lock()
 	this.codec = codec
 	this.lock.Unlock()
 }
 
-func (this *Socket) SetCloseCallBack(closeCallback func(reason string)) {
+func (this *TcpSocket) SetCloseCallBack(closeCallback func(reason string)) {
 	defer this.lock.Unlock()
 	this.lock.Lock()
 	this.closeCallback = closeCallback
 }
 
-func (this *Socket) SetUserData(ud interface{}) {
+func (this *TcpSocket) SetUserData(ud interface{}) {
 	this.lock.Lock()
 	this.uData = ud
 	this.lock.Unlock()
 }
 
-func (this *Socket) GetUserData() interface{} {
+func (this *TcpSocket) GetUserData() interface{} {
 	defer this.lock.Unlock()
 	this.lock.Lock()
 	return this.uData
 }
 
 //开启消息处理
-func (this *Socket) Start(msgCb func(interface{}, error)) error {
+func (this *TcpSocket) Start(msgCb func(interface{}, error)) error {
 	if msgCb == nil {
 		return errNoMsgCallBack
 	}
@@ -110,24 +111,25 @@ func (this *Socket) Start(msgCb func(interface{}, error)) error {
 	this.flag |= started
 
 	if this.codec == nil {
-		this.codec = NewDefCodec()
+		return errNoCodec
 	}
+
 	this.msgCallback = msgCb
 
-	go this.receiveRoutine()
-	go this.sendRoutine()
+	go this.receiveThread()
+	go this.sendThread()
 
 	return nil
 }
 
-func (this *Socket) getFlag() byte {
+func (this *TcpSocket) getFlag() byte {
 	this.lock.Lock()
 	defer this.lock.Unlock()
 	return this.flag
 }
 
 //接收线程
-func (this *Socket) receiveRoutine() {
+func (this *TcpSocket) receiveThread() {
 
 	for (this.getFlag() & rclosed) == 0 {
 
@@ -155,7 +157,7 @@ func (this *Socket) receiveRoutine() {
 }
 
 //发送线程
-func (this *Socket) sendRoutine() {
+func (this *TcpSocket) sendThread() {
 
 	defer this.close()
 	for (this.getFlag() & wclosed) == 0 {
@@ -178,7 +180,7 @@ func (this *Socket) sendRoutine() {
 	}
 }
 
-func (this *Socket) Send(o interface{}) error {
+func (this *TcpSocket) Send(o interface{}) error {
 	if o == nil {
 		return errSendMsgNil
 	}
@@ -212,7 +214,7 @@ func (this *Socket) Send(o interface{}) error {
 	return nil
 }
 
-func (this *Socket) SendMsg(data []byte) error {
+func (this *TcpSocket) SendMsg(data []byte) error {
 	if len(data) == 0 {
 		return errSendMsgNil
 	}
@@ -240,7 +242,7 @@ func (this *Socket) SendMsg(data []byte) error {
  主动关闭连接
  先关闭读，待写发送完毕关闭写
 */
-func (this *Socket) Close(reason string) {
+func (this *TcpSocket) Close(reason string) {
 	this.lock.Lock()
 	defer this.lock.Unlock()
 	if (this.flag & closed) > 0 {
@@ -252,7 +254,7 @@ func (this *Socket) Close(reason string) {
 	close(this.sendChan)
 }
 
-func (this *Socket) CloseRead() {
+func (this *TcpSocket) CloseRead() {
 	this.lock.Lock()
 	defer this.lock.Unlock()
 	if (this.flag & rclosed) > 0 {
@@ -263,7 +265,7 @@ func (this *Socket) CloseRead() {
 	this.conn.(*net.TCPConn).CloseRead()
 }
 
-func (this *Socket) close() {
+func (this *TcpSocket) close() {
 	this.conn.Close()
 	this.lock.Lock()
 	this.flag |= closed

@@ -13,9 +13,11 @@ type Session interface {
 	*/
 	SetCodec(codec Codec)
 	// conn
-	NetConn() net.Conn
+	NetConn() interface{}
 	// 获取远端地址
 	RemoteAddr() net.Addr
+	// 获取远端地址
+	LocalAddr() net.Addr
 	/*
 	 开启数据接收处理
 	 回掉函数返回 message，err。当且仅当 err == nil，message 不为空。

@@ -1,8 +1,7 @@
-package dnet
+package util
 
 import (
 	"fmt"
-	"github.com/yddeng/dnet/util"
 	"io"
 	"reflect"
 )
@@ -16,19 +15,19 @@ const (
 	buffSize = 65535   // 缓存容量(与lenSize有关，2字节最大65535）
 )
 
-type defCodec struct {
-	readBuf *util.Buffer
+type Codec struct {
+	readBuf *Buffer
 	dataLen uint16
 }
 
-func NewDefCodec() *defCodec {
-	return &defCodec{
-		readBuf: util.NewBuffer(buffSize),
+func NewCodec() *Codec {
+	return &Codec{
+		readBuf: NewBuffer(buffSize),
 	}
 }
 
 //解码
-func (decoder *defCodec) Decode(reader io.Reader) (interface{}, error) {
+func (decoder *Codec) Decode(reader io.Reader) (interface{}, error) {
 	for {
 		msg, err := decoder.unPack()
 
@@ -46,7 +45,7 @@ func (decoder *defCodec) Decode(reader io.Reader) (interface{}, error) {
 	}
 }
 
-func (decoder *defCodec) unPack() ([]byte, error) {
+func (decoder *Codec) unPack() ([]byte, error) {
 
 	if decoder.dataLen == 0 {
 		if decoder.readBuf.Len() < headSize {
@@ -68,7 +67,7 @@ func (decoder *defCodec) unPack() ([]byte, error) {
 }
 
 //编码
-func (encoder *defCodec) Encode(o interface{}) ([]byte, error) {
+func (encoder *Codec) Encode(o interface{}) ([]byte, error) {
 
 	data, ok := o.([]byte)
 	if !ok {
@@ -81,7 +80,7 @@ func (encoder *defCodec) Encode(o interface{}) ([]byte, error) {
 	}
 
 	msgLen := dataLen + headSize
-	buff := util.NewBuffer(msgLen)
+	buff := NewBuffer(msgLen)
 
 	//写入data长度
 	buff.WriteUint16BE(uint16(dataLen))
