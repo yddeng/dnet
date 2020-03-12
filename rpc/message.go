@@ -13,20 +13,6 @@ type Response struct {
 }
 
 type RPCChannel interface {
-	SendRequest(interface{}) error  // 发送RPC请求
-	SendResponse(interface{}) error // 发送RPC回复
-}
-
-type ServerCodec interface {
-	//编码
-	EncodeResponse(response *Response) (interface{}, error)
-	//解码
-	DecodeRequest(data interface{}) (*Request, error)
-}
-
-type ClientCodec interface {
-	//编码
-	EncodeRequest(request *Request) (interface{}, error)
-	//解码
-	DecodeResponse(data interface{}) (*Response, error)
+	SendRequest(req *Request) error    // 发送RPC请求
+	SendResponse(resp *Response) error // 发送RPC回复
 }

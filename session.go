@@ -29,7 +29,7 @@ type Session interface {
 	// 发送一个对象，经过编码发送出去
 	Send(o interface{}) error
 	// 发送数据，不经过编码器直接发送
-	SendMsg(data []byte) error
+	SendBytes(data []byte) error
 	// 给session绑定用户数据
 	SetUserData(ud interface{})
 	// 获取用户数据

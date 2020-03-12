@@ -185,36 +185,21 @@ func (this *TcpSocket) Send(o interface{}) error {
 		return errSendMsgNil
 	}
 
-	//非堵塞
-	if len(this.sendChan) == sendChanSize {
-		return errSendChanFull
-	}
-
 	this.lock.Lock()
-	defer this.lock.Unlock()
-	if (this.flag & started) == 0 {
-		return errNotStarted
-	}
-
-	if (this.flag & wclosed) > 0 {
-		return errSocketClosed
-	}
-
 	if this.codec == nil {
 		return errNoCodec
 	}
+	this.lock.Unlock()
 
 	data, err := this.codec.Encode(o)
 	if err != nil {
 		return err
 	}
 
-	this.sendChan <- data
-
-	return nil
+	return this.SendBytes(data)
 }
 
-func (this *TcpSocket) SendMsg(data []byte) error {
+func (this *TcpSocket) SendBytes(data []byte) error {
 	if len(data) == 0 {
 		return errSendMsgNil
 	}
@@ -225,7 +210,6 @@ func (this *TcpSocket) SendMsg(data []byte) error {
 	}
 
 	this.lock.Lock()
-	defer this.lock.Unlock()
 	if (this.flag & started) == 0 {
 		return errNotStarted
 	}
@@ -233,6 +217,7 @@ func (this *TcpSocket) SendMsg(data []byte) error {
 	if (this.flag & wclosed) > 0 {
 		return errSocketClosed
 	}
+	this.lock.Unlock()
 
 	this.sendChan <- data
 	return nil

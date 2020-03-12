@@ -29,30 +29,6 @@ const (
 	rbuffSize = 65535                                    // 缓存容量(与lenSize有关，2字节最大65535）
 )
 
-type DefServerCodec struct {
-}
-
-func (this *DefServerCodec) EncodeResponse(response *rpc.Response) (interface{}, error) {
-	return response, nil
-}
-
-//解码
-func (this *DefServerCodec) DecodeRequest(data interface{}) (*rpc.Request, error) {
-	return data.(*rpc.Request), nil
-}
-
-type DefClientCodec struct {
-}
-
-func (this *DefClientCodec) EncodeRequest(request *rpc.Request) (interface{}, error) {
-	return request, nil
-}
-
-//解码
-func (this *DefClientCodec) DecodeResponse(data interface{}) (*rpc.Response, error) {
-	return data.(*rpc.Response), nil
-}
-
 type RpcCodec struct {
 	readBuf *buffer.Buffer
 	seqNo   uint64

@@ -8,9 +8,8 @@ import (
 )
 
 type Server struct {
-	severCodec ServerCodec
-	methods    sync.Map //map[reflect.Type]*methodInfo
-	lastReqNo  uint64
+	methods   sync.Map //map[reflect.Type]*methodInfo
+	lastReqNo uint64
 }
 
 type methodInfo struct {
@@ -23,13 +22,13 @@ type methodInfo struct {
 func (server *Server) Register(method interface{}) error {
 	mValue := reflect.ValueOf(method)
 	if mValue.Kind() != reflect.Func {
-		return fmt.Errorf("register rpc method is fail,need func(req pointer) or func(req pointer,resp pointer)\n")
+		return fmt.Errorf("register rpc method is fail,need func(req pointer) or func(req pointer,resp pointer)")
 	}
 
 	mType := reflect.TypeOf(method)
 
 	if mType.NumIn() < 1 || mType.NumIn() > 2 {
-		return fmt.Errorf("register rpc method is fail,need func(req pointer) or func(req pointer,resp pointer)\n")
+		return fmt.Errorf("register rpc method is fail,need func(req pointer) or func(req pointer,resp pointer)")
 	}
 
 	info := &methodInfo{
@@ -45,7 +44,7 @@ func (server *Server) Register(method interface{}) error {
 	argType := mType.In(0)
 	_, ok := server.methods.Load(argType)
 	if ok {
-		return fmt.Errorf("duplicate method:%s\n", argType)
+		return fmt.Errorf("duplicate method:%s", argType)
 	}
 	server.methods.Store(argType, info)
 	return nil
@@ -65,30 +64,17 @@ func (server *Server) checkMethod(name reflect.Type, needResp bool) (*methodInfo
 	return m, nil
 }
 
-func (server *Server) reply(channel RPCChannel, resp *Response) error {
-	data, err := server.severCodec.EncodeResponse(resp)
-	if err != nil {
-		return err
-	}
-	return channel.SendResponse(data)
-}
-
-func (server *Server) OnRPCRequest(channel RPCChannel, data interface{}) error {
-	req, err := server.severCodec.DecodeRequest(data)
-	if err != nil {
-		return err
-	}
-
+func (server *Server) OnRPCRequest(channel RPCChannel, req *Request) error {
 	// 重复请求
 	if !atomic.CompareAndSwapUint64(&server.lastReqNo, req.SeqNo-1, req.SeqNo) {
-		return fmt.Errorf("repeated reqNo:%d\n", req.SeqNo)
+		return fmt.Errorf("repeated reqNo:%d", req.SeqNo)
 	}
 
 	name := reflect.TypeOf(req.Data)
 	method, err := server.checkMethod(name, req.NeedResp)
 	if err != nil {
 		if req.NeedResp {
-			_ = server.reply(channel, &Response{SeqNo: req.SeqNo, Err: err})
+			_ = channel.SendResponse(&Response{SeqNo: req.SeqNo, Err: err})
 		}
 		return err
 	}
@@ -103,11 +89,9 @@ func (server *Server) OnRPCRequest(channel RPCChannel, data interface{}) error {
 		method.method.Call([]reflect.Value{arg})
 	}
 
-	return server.reply(channel, resp)
+	return channel.SendResponse(resp)
 }
 
-func NewServer(severCodec ServerCodec) *Server {
-	return &Server{
-		severCodec: severCodec,
-	}
+func NewServer() *Server {
+	return &Server{}
 }

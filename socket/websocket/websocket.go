@@ -168,10 +168,10 @@ func (this *WebSocket) Send(o interface{}) error {
 		return fmt.Errorf("interface {} is %s,need []byte or use SendMsg(data []byte)", reflect.TypeOf(o).String())
 	}
 
-	return this.SendMsg(data)
+	return this.SendBytes(data)
 }
 
-func (this *WebSocket) SendMsg(data []byte) error {
+func (this *WebSocket) SendBytes(data []byte) error {
 	if len(data) == 0 {
 		return errSendMsgNil
 	}
