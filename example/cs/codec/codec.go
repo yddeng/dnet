@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/yddeng/dnet/example/module/message"
 	"github.com/yddeng/dnet/example/module/protocol"
-	"github.com/yddeng/dnet/util"
+	"github.com/yddeng/dutil/buffer"
 	"io"
 )
 
@@ -25,12 +25,12 @@ type Codec struct {
 
 func NewCodec() *Codec {
 	return &Codec{
-		Decoder: &Decoder{readBuf: util.NewBuffer(buffSize)},
+		Decoder: &Decoder{readBuf: buffer.NewBuffer(buffSize)},
 	}
 }
 
 type Decoder struct {
-	readBuf *util.Buffer
+	readBuf *buffer.Buffer
 	dataLen uint16
 	cmd     uint16
 	msgID   uint16
@@ -107,7 +107,7 @@ func (encoder *Codec) Encode(o interface{}) ([]byte, error) {
 	}
 
 	msgLen := dataLen + headSize
-	buff := util.NewBuffer(msgLen)
+	buff := buffer.NewBuffer(msgLen)
 
 	//msgLen+cmd+msgID
 	//写入data长度

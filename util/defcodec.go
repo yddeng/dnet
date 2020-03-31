@@ -2,6 +2,7 @@ package util
 
 import (
 	"fmt"
+	"github.com/yddeng/dutil/buffer"
 	"io"
 	"reflect"
 )
@@ -16,13 +17,13 @@ const (
 )
 
 type Codec struct {
-	readBuf *Buffer
+	readBuf *buffer.Buffer
 	dataLen uint16
 }
 
 func NewCodec() *Codec {
 	return &Codec{
-		readBuf: NewBuffer(buffSize),
+		readBuf: buffer.NewBuffer(buffSize),
 	}
 }
 
@@ -80,7 +81,7 @@ func (encoder *Codec) Encode(o interface{}) ([]byte, error) {
 	}
 
 	msgLen := dataLen + headSize
-	buff := NewBuffer(msgLen)
+	buff := buffer.NewBuffer(msgLen)
 
 	//写入data长度
 	buff.WriteUint16BE(uint16(dataLen))

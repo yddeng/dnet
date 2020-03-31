@@ -7,7 +7,6 @@ import (
 	"github.com/yddeng/dnet/example/pb"
 	"github.com/yddeng/dnet/example/rpc/codec"
 	"github.com/yddeng/dnet/rpc"
-	"github.com/yddeng/dnet/socket"
 	"github.com/yddeng/dnet/socket/tcp"
 )
 
