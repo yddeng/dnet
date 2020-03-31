@@ -8,6 +8,7 @@ import (
 	"github.com/yddeng/dnet/example/rpc/codec"
 	"github.com/yddeng/dnet/rpc"
 	"github.com/yddeng/dnet/socket"
+	"github.com/yddeng/dnet/socket/tcp"
 )
 
 func echo(req *pb.EchoToS, resp *pb.EchoToC) {
@@ -35,7 +36,7 @@ func main() {
 	rpcServer.Register(echo)
 
 	addr := "localhost:7756"
-	session, err := socket.TCPDial("tcp", addr, 0)
+	session, err := tcp.Dial("tcp", addr, 0)
 	if err != nil {
 		fmt.Println(err)
 		return

@@ -6,13 +6,13 @@ import (
 	"github.com/yddeng/dnet/example/cs/codec"
 	"github.com/yddeng/dnet/example/module/message"
 	"github.com/yddeng/dnet/example/pb"
-	"github.com/yddeng/dnet/socket"
+	"github.com/yddeng/dnet/socket/tcp"
 	"time"
 )
 
 func main() {
 	addr := "localhost:1234"
-	session, err := socket.TCPDial("tcp", addr, 0)
+	session, err := tcp.Dial("tcp", addr, 0)
 	if err != nil {
 		fmt.Println(err)
 		return

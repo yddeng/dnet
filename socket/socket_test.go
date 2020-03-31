@@ -3,6 +3,8 @@ package socket
 import (
 	"fmt"
 	"github.com/yddeng/dnet"
+	"github.com/yddeng/dnet/socket/tcp"
+	"github.com/yddeng/dnet/socket/ws"
 	"github.com/yddeng/dnet/util"
 	"testing"
 	"time"
@@ -10,14 +12,14 @@ import (
 
 func TestNewTcpListener(t *testing.T) {
 	addr := "localhost:1234"
-	l, err := NewTcpListener("tcp", addr)
+	l, err := tcp.NewListener("tcp", addr)
 	if err != nil {
 		fmt.Println(1, err)
 		return
 	}
 
 	go func() {
-		err := l.StartService(func(session dnet.Session) {
+		err := l.Listen(func(session dnet.Session) {
 			fmt.Println("new client", session.RemoteAddr().String())
 			session.SetCodec(util.NewCodec())
 			//session.SetTimeout(3*time.Second, 0)
@@ -49,7 +51,7 @@ func TestTCPDial(t *testing.T) {
 	addr := "localhost:1234"
 
 	time.Sleep(time.Second)
-	session, err := TCPDial("tcp", addr, 0)
+	session, err := tcp.Dial("tcp", addr, 0)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -75,14 +77,14 @@ func TestTCPDial(t *testing.T) {
 }
 
 func TestNewWSListener(t *testing.T) {
-	listener, err := NewWSListener("tcp", "127.0.0.1:1234", "/echo")
+	listener, err := ws.NewListener("tcp", "127.0.0.1:1234", "/echo")
 	if err != nil {
 		fmt.Println(1, err)
 		return
 	}
 
 	go func() {
-		err = listener.StartService(func(session dnet.Session) {
+		err = listener.Listen(func(session dnet.Session) {
 			fmt.Println("new client", session.RemoteAddr().String())
 			session.SetCloseCallBack(func(reason string) {
 				fmt.Println("session close", reason)
@@ -110,7 +112,7 @@ func TestNewWSListener(t *testing.T) {
 func TestWSDial(t *testing.T) {
 	addr := "localhost:1234"
 
-	session, err := WSDial(addr, "/echo", 0)
+	session, err := ws.Dial(addr, "/echo", 0)
 	if err != nil {
 		fmt.Println(err)
 		return

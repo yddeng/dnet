@@ -8,7 +8,7 @@ import (
 	"github.com/yddeng/dnet/example/module/handler"
 	"github.com/yddeng/dnet/example/module/message"
 	"github.com/yddeng/dnet/example/pb"
-	"github.com/yddeng/dnet/socket"
+	"github.com/yddeng/dnet/socket/tcp"
 	"reflect"
 	"time"
 )
@@ -26,13 +26,13 @@ func main() {
 	gHandler.RegisterCallBack(&pb.EchoToS{}, echoToC)
 
 	addr := "localhost:1234"
-	l, err := socket.NewTcpListener("tcp", addr)
+	l, err := tcp.NewListener("tcp", addr)
 	if err != nil {
 		fmt.Println(1, err)
 		return
 	}
 
-	err = l.StartService(func(session dnet.Session) {
+	err = l.Listen(func(session dnet.Session) {
 		fmt.Println("new client", session.RemoteAddr().String())
 		// 超时时间
 		session.SetTimeout(10*time.Second, 0)
@@ -57,6 +57,6 @@ func main() {
 		fmt.Println(3, err)
 	}
 
-	fmt.Println("server start on : 10.128.2.233:12345")
+	fmt.Println("server start on :", addr)
 	select {}
 }
