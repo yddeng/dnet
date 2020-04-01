@@ -3,6 +3,7 @@ package rpc
 import (
 	"errors"
 	"fmt"
+	"github.com/yddeng/dnet"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -14,12 +15,11 @@ type Call struct {
 	timer    *time.Timer
 }
 
-var ErrTimeout = errors.New("RPC timeout")
+var timeout = 8 * time.Second
 
 type Client struct {
 	reqNo   uint64   //请求号
 	pending sync.Map //map[uint64]*Call
-	timeout time.Duration
 }
 
 /*
@@ -46,10 +46,10 @@ func (client *Client) AsynCall(channel RPCChannel, msg interface{}, callback fun
 		callback: callback,
 	}
 
-	c.timer = time.AfterFunc(client.timeout, func() {
+	c.timer = time.AfterFunc(timeout, func() {
 		if _, ok := client.pending.Load(c.reqNo); ok {
 			client.pending.Delete(c.reqNo)
-			c.callback(nil, ErrTimeout)
+			c.callback(nil, dnet.ErrRPCTimeout)
 		}
 	})
 
@@ -57,24 +57,25 @@ func (client *Client) AsynCall(channel RPCChannel, msg interface{}, callback fun
 	return nil
 }
 
+// 需用户在逻辑层实现。在同一线程处理会导致死锁。
 /*
  同步请求
 */
-func (client *Client) SynsCall(channel RPCChannel, msg interface{}) (ret interface{}, err error) {
-	sysnChan := make(chan struct{})
-	err = client.AsynCall(channel, msg, func(ret_ interface{}, err_ error) {
-		ret = ret_
-		err = err_
-		sysnChan <- struct{}{}
-	})
-	if err == nil {
-		_ = <-sysnChan
-	}
+//func (client *Client) SynsCall(channel RPCChannel, msg interface{}) (ret interface{}, err error) {
+//	sysnChan := make(chan struct{})
+//	err = client.AsynCall(channel, msg, func(ret_ interface{}, err_ error) {
+//		ret = ret_
+//		err = err_
+//		sysnChan <- struct{}{}
+//	})
+//	if err == nil {
+//		_ = <-sysnChan
+//	}
+//
+//	return
+//}
 
-	return
-}
-
-//只管将消息发送出去
+//只管将消息发送出去,
 func (client *Client) Post(channel RPCChannel, msg interface{}) error {
 	req := &Request{
 		SeqNo:    atomic.AddUint64(&client.reqNo, 1),
@@ -103,9 +104,6 @@ func (client *Client) OnRPCResponse(resp *Response) error {
 }
 
 func NewClient() *Client {
-	client := &Client{
-		timeout: 8 * time.Second, //rpc超时时间
-	}
-
+	client := &Client{}
 	return client
 }

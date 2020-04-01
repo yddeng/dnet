@@ -81,14 +81,14 @@ func main() {
 	fmt.Println("Post")
 	rpcClient.Post(&channel{session: session}, msg)
 
-	fmt.Println("SynsCall")
-	ret, err := rpcClient.SynsCall(&channel{session: session}, msg)
-	if err != nil {
-		fmt.Println("SynsCall", err)
-		return
-	}
-	resp := ret.(*pb.EchoToC)
-	fmt.Println("node2 SynsCall -->", resp.GetMsg())
+	//fmt.Println("SynsCall")
+	//ret, err := rpcClient.SynsCall(&channel{session: session}, msg)
+	//if err != nil {
+	//	fmt.Println("SynsCall", err)
+	//	return
+	//}
+	//resp := ret.(*pb.EchoToC)
+	//fmt.Println("node2 SynsCall -->", resp.GetMsg())
 
 	select {}
 

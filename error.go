@@ -13,3 +13,7 @@ var (
 	ErrSendMsgNil     = fmt.Errorf("session send msg is nil")
 	ErrSendChanFull   = fmt.Errorf("session send chan is full")
 )
+
+var (
+	ErrRPCTimeout = fmt.Errorf("RPC timeout")
+)
