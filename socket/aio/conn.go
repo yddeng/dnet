@@ -133,7 +133,8 @@ func (c *AioConn) handleWrite(fd int) {
 		return
 	}
 
-	if len(data) > n { // 没有发送完
+	c.writeBuffer.Reset()
+	if n < len(data) { // 没有发送完
 		c.writeBuffer.Write(data[n:])
 	}
 
