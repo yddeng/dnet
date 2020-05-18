@@ -20,7 +20,7 @@ const sendBufChanSize = 1024
 type Conn struct {
 	flag         byte
 	conn         *websocket.Conn
-	uData        interface{}   //用户数据
+	ctx          interface{}   //用户数据
 	readTimeout  time.Duration // 读超时
 	writeTimeout time.Duration // 写超时
 
@@ -70,16 +70,16 @@ func (this *Conn) SetCloseCallBack(closeCallback func(reason string)) {
 	this.closeCallback = closeCallback
 }
 
-func (this *Conn) SetUserData(ud interface{}) {
+func (this *Conn) SetContext(ctx interface{}) {
 	this.lock.Lock()
-	this.uData = ud
+	this.ctx = ctx
 	this.lock.Unlock()
 }
 
-func (this *Conn) GetUserData() interface{} {
+func (this *Conn) Context() interface{} {
 	this.lock.Lock()
 	defer this.lock.Unlock()
-	return this.uData
+	return this.ctx
 }
 
 //开启消息处理

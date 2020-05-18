@@ -4,7 +4,7 @@
 
 ```
 type Session interface {
-	/*
+    /*
 	  编解码器
 	  Start之前需设置编解码器，否则使用默认的编解码器
 	*/
@@ -26,11 +26,11 @@ type Session interface {
 	// 发送一个对象，经过编码发送出去
 	Send(o interface{}) error
 	// 发送数据，不经过编码器直接发送
-	SendMsg(data []byte) error
+	SendBytes(data []byte) error
 	// 给session绑定用户数据
-	SetUserData(ud interface{})
+	SetContext(ctx interface{})
 	// 获取用户数据
-	GetUserData() interface{}
+	Context() interface{}
 	// 连接断开回调
 	SetCloseCallBack(func(reason string))
 	/*

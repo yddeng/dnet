@@ -51,6 +51,10 @@ func (l *Listener) Listen(newClient func(session dnet.Session)) error {
 	return nil
 }
 
+func (l *Listener) Addr() net.Addr {
+	return l.listener.Addr()
+}
+
 func (l *Listener) Close() {
 	if atomic.CompareAndSwapInt32(&l.started, 1, 0) {
 		_ = l.listener.Close()

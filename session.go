@@ -31,9 +31,9 @@ type Session interface {
 	// 发送数据，不经过编码器直接发送
 	SendBytes(data []byte) error
 	// 给session绑定用户数据
-	SetUserData(ud interface{})
+	SetContext(ctx interface{})
 	// 获取用户数据
-	GetUserData() interface{}
+	Context() interface{}
 	// 连接断开回调
 	SetCloseCallBack(func(reason string))
 	/*
