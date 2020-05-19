@@ -23,7 +23,7 @@ type Codec struct {
 
 func newCodec() *Codec {
 	return &Codec{
-		readBuf: buffer.NewBuffer(buffSize),
+		readBuf: buffer.NewBufferWithCap(buffSize),
 		dataLen: 0,
 	}
 }
@@ -37,12 +37,12 @@ func (decoder *Codec) Decode(reader io.Reader) (interface{}, error) {
 		if msg != nil {
 			return msg, nil
 		} else if err == nil {
-			_, err1 := decoder.readBuf.ReadFrom(reader)
+			n, err1 := decoder.readBuf.ReadFrom(reader)
 			if err1 != nil {
-				if err1 == buffer.ErrWriteNone {
-					return nil, nil
-				}
 				return nil, err1
+			}
+			if n <= 0 {
+				return nil, nil
 			}
 		} else {
 			return nil, err
@@ -85,14 +85,14 @@ func (encoder *Codec) Encode(o interface{}) ([]byte, error) {
 	}
 
 	msgLen := dataLen + headSize
-	buff := buffer.NewBuffer(msgLen)
+	buff := buffer.NewBufferWithCap(msgLen)
 
 	//写入data长度
 	buff.WriteUint16BE(uint16(dataLen))
 	//data数据
 	buff.WriteBytes(data)
 
-	return buff.Peek(), nil
+	return buff.Bytes(), nil
 }
 
 func TestEcho(t *testing.T) {

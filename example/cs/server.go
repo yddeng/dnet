@@ -15,7 +15,7 @@ import (
 
 func echoToC(session dnet.Session, msg *message.Message) {
 	data := msg.GetData().(*pb.EchoToS)
-	fmt.Println("echo", data.GetMsg())
+	fmt.Println("echo", data.GetMsg(), time.Now().String())
 
 	_ = session.Send(message.NewMessage(0, &pb.EchoToC{Msg: proto.String("hello client")}))
 }

@@ -23,7 +23,7 @@ type Codec struct {
 
 func NewCodec() *Codec {
 	return &Codec{
-		readBuf: buffer.NewBuffer(buffSize),
+		readBuf: &buffer.Buffer{},
 	}
 }
 
@@ -81,12 +81,12 @@ func (encoder *Codec) Encode(o interface{}) ([]byte, error) {
 	}
 
 	msgLen := dataLen + headSize
-	buff := buffer.NewBuffer(msgLen)
+	buff := buffer.NewBufferWithCap(msgLen)
 
 	//写入data长度
 	buff.WriteUint16BE(uint16(dataLen))
 	//data数据
 	buff.WriteBytes(data)
 
-	return buff.Peek(), nil
+	return buff.Bytes(), nil
 }

@@ -40,7 +40,7 @@ type RpcCodec struct {
 
 func NewRpcCodec() *RpcCodec {
 	return &RpcCodec{
-		readBuf: buffer.NewBuffer(rbuffSize),
+		readBuf: buffer.NewBufferWithCap(rbuffSize),
 	}
 }
 
@@ -173,7 +173,7 @@ func (encoder *RpcCodec) Encode(o interface{}) ([]byte, error) {
 	}
 
 	msgLen := rheadSize + nameLen + bodyLen
-	buff := buffer.NewBuffer(msgLen)
+	buff := buffer.NewBufferWithCap(msgLen)
 
 	//写入seqNo
 	buff.WriteUint64BE(seqNo)
@@ -188,7 +188,7 @@ func (encoder *RpcCodec) Encode(o interface{}) ([]byte, error) {
 	//body
 	buff.WriteBytes(data)
 
-	return buff.Peek(), nil
+	return buff.Bytes(), nil
 }
 
 func Marshal(data interface{}) (string, []byte, error) {
