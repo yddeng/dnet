@@ -3,8 +3,8 @@ package dhttp
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 	"testing"
-	"time"
 )
 
 type Echo struct {
@@ -17,15 +17,21 @@ func TestNewHttpServer(t *testing.T) {
 	s.HandleFuncJson("/echo", &Echo{}, func(w http.ResponseWriter, msg interface{}) {
 		req := msg.(*Echo)
 		fmt.Println(req.Msg)
+
+		w.Write([]byte(req.Msg))
 	})
+
+	s.HandleFuncUrlParam("/param", func(w http.ResponseWriter, msg interface{}) {
+		from := msg.(url.Values)
+		fmt.Println(from)
+
+		w.Write([]byte(from.Encode()))
+	})
+
+	s.Handle("/upload", HandleUpload)
 
 	fmt.Println("listen")
 
-	go func() {
-		_ = s.Listen()
-	}()
+	_ = s.Listen()
 
-	time.Sleep(time.Second)
-	resp, err := PostJson("http://localhost:1234/echo", &Echo{Msg: "hello"}, 0)
-	fmt.Println(resp.StatusCode, err)
 }

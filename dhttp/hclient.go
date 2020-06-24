@@ -3,76 +3,255 @@ package dhttp
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
+	"encoding/xml"
 	"io"
+	"io/ioutil"
+	"mime/multipart"
 	"net/http"
-	"net/url"
-	"strings"
+	urlpkg "net/url"
+	"os"
+	"path"
 	"time"
 )
 
-//发送GET请求
-//url:请求地址; timeout:超时时间,小于等于0不设置超时
-//response:请求返回的内容
-func Get(url string, timeout time.Duration) (*http.Response, error) {
-	client := &http.Client{Timeout: timeout}
-	req, err := http.NewRequest("GET", url, nil)
+type Request struct {
+	c    *http.Client
+	req  *http.Request
+	resp *http.Response
+	body []byte // response body
+}
+
+func (rq *Request) Timeout(timeout time.Duration) {
+	rq.c.Timeout = timeout
+}
+
+func (rq *Request) Do() (resp *http.Response, err error) {
+	if rq.resp != nil && rq.resp.StatusCode != 0 {
+		return rq.resp, nil
+	}
+
+	resp, err = rq.c.Do(rq.req)
 	if err != nil {
 		return nil, err
 	}
-	//Http的短连接，防止链接重用。解决 Connection reset by peer
-	req.Close = true
-
-	resp, rerr := client.Do(req)
-	if rerr != nil {
-		return nil, rerr
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("http url %s get status code %d", url, resp.StatusCode)
-	}
-	return resp, nil
+	rq.resp = resp
+	return
 }
 
-//发送Urlencoded POST请求
-//url:请求地址; data:POST请求提交的数据; timeout:超时时间,小于等于0不设置超时;
-//Response:请求返回的内容，err，请求错误
-func PostUrlencoded(url string, data url.Values, timeout time.Duration) (*http.Response, error) {
-	return Post(url, "application/x-www-form-urlencoded", strings.NewReader(data.Encode()), timeout)
-}
-
-//发送Json POST请求
-//url:请求地址; data:POST请求提交的json数据; timeout:超时时间,小于等于0不设置超时;
-//Response:请求返回的内容，err，请求错误
-func PostJson(url string, req interface{}, timeout time.Duration) (*http.Response, error) {
-	data, err := json.Marshal(req)
+// PostFile add a post file to the request
+func (rq *Request) PostFile(filename, filePath string) (*Request, error) {
+	srcFile, err := os.Open(filePath)
 	if err != nil {
 		return nil, err
 	}
-	return Post(url, "application/json", bytes.NewReader(data), timeout)
-}
+	defer srcFile.Close()
 
-//发送POST请求
-//url:请求地址; data:POST请求提交的json数据; timeout:超时时间,小于等于0不设置超时;
-//Response:请求返回的内容，err，请求错误
-func Post(url string, contentType string, reader io.Reader, timeout time.Duration) (*http.Response, error) {
-	client := &http.Client{Timeout: timeout}
-	req, err := http.NewRequest("POST", url, reader)
+	buf := new(bytes.Buffer)
+	writer := multipart.NewWriter(buf)
+	fileWriter, err := writer.CreateFormFile("uploadFile", filename)
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("Content-Type", contentType)
-	//Http的短连接，防止链接重用。解决 Connection reset by peer
-	req.Close = true
 
-	resp, rerr := client.Do(req)
-	if rerr != nil {
-		return nil, rerr
+	//iocopy
+	_, err = io.Copy(fileWriter, srcFile)
+	if err != nil {
+		return nil, err
+	}
+	contentType := writer.FormDataContentType()
+	writer.Close()
+	rq.req.Header.Set("Content-Type", contentType)
+	rq.req.Body = ioutil.NopCloser(buf)
+
+	return rq, nil
+}
+
+func (rq *Request) Body(data interface{}) *Request {
+	switch t := data.(type) {
+	case string:
+		bf := bytes.NewBufferString(t)
+		rq.req.Body = ioutil.NopCloser(bf)
+		rq.req.ContentLength = int64(len(t))
+	case []byte:
+		bf := bytes.NewBuffer(t)
+		rq.req.Body = ioutil.NopCloser(bf)
+		rq.req.ContentLength = int64(len(t))
+	}
+	return rq
+}
+
+// Param adds query param in to request.
+func (rq *Request) Param(values urlpkg.Values) *Request {
+	rq.Body(values.Encode())
+	rq.req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	return rq
+}
+
+// XMLBody adds request raw body encoding by XML.
+func (rq *Request) XMLBody(obj interface{}) (*Request, error) {
+	if rq.req.Body == nil && obj != nil {
+		byts, err := xml.Marshal(obj)
+		if err != nil {
+			return rq, err
+		}
+		rq.req.Body = ioutil.NopCloser(bytes.NewReader(byts))
+		rq.req.ContentLength = int64(len(byts))
+		rq.req.Header.Set("Content-Type", "application/xml")
+	}
+	return rq, nil
+}
+
+// JSONBody adds request raw body encoding by JSON.
+func (rq *Request) JSONBody(obj interface{}) (*Request, error) {
+	if rq.req.Body == nil && obj != nil {
+		byts, err := json.Marshal(obj)
+		if err != nil {
+			return rq, err
+		}
+		rq.req.Body = ioutil.NopCloser(bytes.NewReader(byts))
+		rq.req.ContentLength = int64(len(byts))
+		rq.req.Header.Set("Content-Type", "application/json")
+	}
+	return rq, nil
+}
+
+// String returns the body string in response.
+// it calls Response inner.
+func (rq *Request) String() (string, error) {
+	data, err := rq.Bytes()
+	if err != nil {
+		return "", err
 	}
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("http url %s post status code %d", url, resp.StatusCode)
+	return string(data), nil
+}
+
+// Bytes returns the body []byte in response.
+// it calls Response inner.
+func (rq *Request) Bytes() ([]byte, error) {
+	if rq.body != nil {
+		return rq.body, nil
+	}
+	resp, err := rq.Do()
+	if err != nil {
+		return nil, err
+	}
+	if resp.Body == nil {
+		return nil, nil
+	}
+	defer resp.Body.Close()
+	//if resp.Header.Get("Content-Encoding") == "gzip" {
+	//	reader, err := gzip.NewReader(resp.Body)
+	//	if err != nil {
+	//		return nil, err
+	//	}
+	//	rq.body, err = ioutil.ReadAll(reader)
+	//	return rq.body, err
+	//}
+	rq.body, err = ioutil.ReadAll(resp.Body)
+	return rq.body, err
+}
+
+// ToFile saves the body data in response to one file.
+// it calls Response inner.
+func (rq *Request) ToFile(filename string) error {
+	resp, err := rq.Do()
+	if err != nil {
+		return err
+	}
+	if resp.Body == nil {
+		return nil
+	}
+	defer resp.Body.Close()
+	err = pathExistAndMkdir(filename)
+	if err != nil {
+		return err
+	}
+	f, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	_, err = io.Copy(f, resp.Body)
+	return err
+}
+
+//Check that the file directory exists, there is no automatically created
+func pathExistAndMkdir(filename string) (err error) {
+	filename = path.Dir(filename)
+	_, err = os.Stat(filename)
+	if err == nil {
+		return nil
+	}
+	if os.IsNotExist(err) {
+		err = os.MkdirAll(filename, os.ModePerm)
+		if err == nil {
+			return nil
+		}
+	}
+	return err
+}
+
+// ToJSON returns the map that marshals from the body bytes as json in response .
+// it calls Response inner.
+func (rq *Request) ToJSON(v interface{}) error {
+	data, err := rq.Bytes()
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(data, v)
+}
+
+// ToXML returns the map that marshals from the body bytes as xml in response .
+// it calls Response inner.
+func (rq *Request) ToXML(v interface{}) error {
+	data, err := rq.Bytes()
+	if err != nil {
+		return err
+	}
+	return xml.Unmarshal(data, v)
+}
+
+func Get(url string) (*Request, error) {
+	return NewRequest(url, "GET")
+}
+
+func PostJson(url string, obj interface{}) (*Request, error) {
+	req, err := NewRequest(url, "POST")
+	if err != nil {
+		return nil, err
 	}
 
-	return resp, nil
+	req, err = req.JSONBody(obj)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+func PostXML(url string, obj interface{}) (*Request, error) {
+	req, err := NewRequest(url, "POST")
+	if err != nil {
+		return nil, err
+	}
+
+	req, err = req.XMLBody(obj)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// new
+func NewRequest(url, method string) (rq *Request, err error) {
+	rq = new(Request)
+	rq.req, err = http.NewRequest(method, url, nil)
+	if err != nil {
+		return
+	}
+
+	rq.c = &http.Client{}
+	return
 }
