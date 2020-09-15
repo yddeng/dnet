@@ -40,7 +40,7 @@ func (server *Server) OnRPCRequest(channel RPCChannel, req *Request) error {
 	method, ok := server.methods[req.Method]
 	server.RUnlock()
 	if !ok {
-		err = fmt.Errorf("invaild method:%s", req.Method)
+		err = fmt.Errorf("invalid method:%s", req.Method)
 		_ = replyer.reply(&Response{SeqNo: req.SeqNo, Err: err})
 		return err
 	}
