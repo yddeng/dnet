@@ -1,4 +1,4 @@
-package rpc
+package drpc
 
 import (
 	"errors"
@@ -15,8 +15,6 @@ type Call struct {
 	timer    *time.Timer
 }
 
-var timeout = 8 * time.Second
-
 type Client struct {
 	reqNo   uint64   //请求号
 	pending sync.Map //map[uint64]*Call
@@ -25,14 +23,15 @@ type Client struct {
 /*
  异步请求
 */
-func (client *Client) AsynCall(channel RPCChannel, msg interface{}, callback func(interface{}, error)) error {
+func (client *Client) AsynCall(channel RPCChannel, method string, data interface{}, timeout time.Duration, callback func(interface{}, error)) error {
 	if callback == nil {
 		return errors.New("callback == nil")
 	}
 
 	req := &Request{
 		SeqNo:    atomic.AddUint64(&client.reqNo, 1),
-		Data:     msg,
+		Method:   method,
+		Data:     data,
 		NeedResp: true,
 	}
 
@@ -76,9 +75,10 @@ func (client *Client) AsynCall(channel RPCChannel, msg interface{}, callback fun
 //}
 
 //只管将消息发送出去,
-func (client *Client) Post(channel RPCChannel, msg interface{}) error {
+func (client *Client) Post(channel RPCChannel, method string, msg interface{}) error {
 	req := &Request{
 		SeqNo:    atomic.AddUint64(&client.reqNo, 1),
+		Method:   method,
 		Data:     msg,
 		NeedResp: false,
 	}

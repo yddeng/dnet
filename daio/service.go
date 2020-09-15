@@ -1,8 +1,8 @@
-package aio
+package daio
 
 import (
 	"errors"
-	"github.com/yddeng/dnet/socket/aio/poller"
+	"github.com/yddeng/dnet/daio/poller"
 	"log"
 	"runtime"
 	"sync"

@@ -22,18 +22,18 @@ type channel struct {
 	session dnet.Session
 }
 
-func (this *channel) SendRequest(req *rpc.Request) error {
+func (this *channel) SendRequest(req *drpc.Request) error {
 	return this.session.Send(req)
 }
 
-func (this *channel) SendResponse(resp *rpc.Response) error {
+func (this *channel) SendResponse(resp *drpc.Response) error {
 	return this.session.Send(resp)
 }
 
 func main() {
 
-	rpcServer := rpc.NewServer()
-	rpcClient := rpc.NewClient()
+	rpcServer := drpc.NewServer()
+	rpcClient := drpc.NewClient()
 	rpcServer.Register(echo)
 
 	addr := "localhost:7756"
@@ -60,10 +60,10 @@ func main() {
 			} else {
 				var err error
 				switch data.(type) {
-				case *rpc.Request:
-					err = rpcServer.OnRPCRequest(&channel{session: session}, data.(*rpc.Request))
-				case *rpc.Response:
-					err = rpcClient.OnRPCResponse(data.(*rpc.Response))
+				case *drpc.Request:
+					err = rpcServer.OnRPCRequest(&channel{session: session}, data.(*drpc.Request))
+				case *drpc.Response:
+					err = rpcClient.OnRPCResponse(data.(*drpc.Response))
 				default:
 					err = fmt.Errorf("invailed type")
 				}

@@ -94,14 +94,14 @@ func (decoder *RpcCodec) unPack() (interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
-		req := &rpc.Request{
+		req := &drpc.Request{
 			SeqNo:    decoder.seqNo,
 			Data:     msg,
 			NeedResp: decoder.flag == RPC_Req_NeedResp,
 		}
 		ret = req
 	case RPC_Response:
-		resp := &rpc.Response{SeqNo: decoder.seqNo}
+		resp := &drpc.Response{SeqNo: decoder.seqNo}
 		if decoder.flag == RPC_Resp_Error {
 			errStr, _ := decoder.readBuf.ReadString(int(decoder.bodyLen))
 			resp.Err = fmt.Errorf(errStr)
@@ -136,8 +136,8 @@ func (encoder *RpcCodec) Encode(o interface{}) ([]byte, error) {
 	var err error
 
 	switch o.(type) {
-	case *rpc.Request:
-		request := o.(*rpc.Request)
+	case *drpc.Request:
+		request := o.(*drpc.Request)
 		seqNo = request.SeqNo
 		if request.NeedResp {
 			flag = RPC_Req_NeedResp
@@ -149,8 +149,8 @@ func (encoder *RpcCodec) Encode(o interface{}) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-	case *rpc.Response:
-		response := o.(*rpc.Response)
+	case *drpc.Response:
+		response := o.(*drpc.Response)
 		seqNo = response.SeqNo
 		if response.Err != nil {
 			flag = RPC_Resp_Error

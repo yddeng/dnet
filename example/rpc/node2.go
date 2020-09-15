@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
 	"github.com/yddeng/dnet"
+	"github.com/yddeng/dnet/drpc"
+	"github.com/yddeng/dnet/dtcp"
 	"github.com/yddeng/dnet/example/pb"
 	"github.com/yddeng/dnet/example/rpc/codec"
-	"github.com/yddeng/dnet/rpc"
-	"github.com/yddeng/dnet/socket/tcp"
 )
 
 func echo(req *pb.EchoToS, resp *pb.EchoToC) {
@@ -20,22 +20,22 @@ type channel struct {
 	session dnet.Session
 }
 
-func (this *channel) SendRequest(req *rpc.Request) error {
+func (this *channel) SendRequest(req *drpc.Request) error {
 	return this.session.Send(req)
 }
 
-func (this *channel) SendResponse(resp *rpc.Response) error {
+func (this *channel) SendResponse(resp *drpc.Response) error {
 	return this.session.Send(resp)
 }
 
 func main() {
 
-	rpcServer := rpc.NewServer()
-	rpcClient := rpc.NewClient()
+	rpcServer := drpc.NewServer()
+	rpcClient := drpc.NewClient()
 	rpcServer.Register(echo)
 
 	addr := "localhost:7756"
-	session, err := tcp.Dial("tcp", addr, 0)
+	session, err := dtcp.Dial("tcp", addr, 0)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -52,10 +52,10 @@ func main() {
 		} else {
 			var err error
 			switch data.(type) {
-			case *rpc.Request:
-				err = rpcServer.OnRPCRequest(&channel{session: session}, data.(*rpc.Request))
-			case *rpc.Response:
-				err = rpcClient.OnRPCResponse(data.(*rpc.Response))
+			case *drpc.Request:
+				err = rpcServer.OnRPCRequest(&channel{session: session}, data.(*drpc.Request))
+			case *drpc.Response:
+				err = rpcClient.OnRPCResponse(data.(*drpc.Response))
 			default:
 				err = fmt.Errorf("invailed type")
 			}

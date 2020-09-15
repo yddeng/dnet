@@ -1,36 +1,34 @@
-package tcp
+package dtcp
 
 import (
-	"errors"
 	"github.com/yddeng/dnet"
-	"log"
 	"net"
 	"sync/atomic"
 	"time"
 )
 
-type Listener struct {
+type TCPListener struct {
 	listener *net.TCPListener
 	started  int32
 }
 
-func NewListener(network, addr string) (*Listener, error) {
+func NewTCPListener(network, addr string) (*TCPListener, error) {
 	tcpAddr, err := net.ResolveTCPAddr(network, addr)
 	if err != nil {
 		return nil, err
 	}
 
 	listener, err := net.ListenTCP(tcpAddr.Network(), tcpAddr)
-	return &Listener{listener: listener}, err
+	return &TCPListener{listener: listener}, err
 }
 
-func (l *Listener) Listen(newClient func(session dnet.Session)) error {
+func (l *TCPListener) Listen(newClient func(session dnet.Session)) error {
 	if newClient == nil {
-		return errors.New("newClient is nil")
+		return dnet.ErrNewClientNil
 	}
 
 	if !atomic.CompareAndSwapInt32(&l.started, 0, 1) {
-		return errors.New("tcpListener is started")
+		return dnet.ErrStateFailed
 	}
 
 	go func() {
@@ -40,29 +38,28 @@ func (l *Listener) Listen(newClient func(session dnet.Session)) error {
 				if ne, ok := err.(net.Error); ok && ne.Temporary() {
 					continue
 				} else {
-					log.Printf("listener err:%s", err)
 					return
 				}
 			}
-			newClient(newConn(conn))
+			newClient(NewTCPConn(conn.(*net.TCPConn)))
 		}
 	}()
 
 	return nil
 }
 
-func (l *Listener) Addr() net.Addr {
+func (l *TCPListener) Addr() net.Addr {
 	return l.listener.Addr()
 }
 
-func (l *Listener) Close() {
+func (l *TCPListener) Close() {
 	if atomic.CompareAndSwapInt32(&l.started, 1, 0) {
 		_ = l.listener.Close()
 	}
 
 }
 
-func Dial(network, addr string, timeout time.Duration) (dnet.Session, error) {
+func DialTCP(network, addr string, timeout time.Duration) (dnet.Session, error) {
 	tcpAddr, err := net.ResolveTCPAddr(network, addr)
 	if err != nil {
 		return nil, err
@@ -74,5 +71,5 @@ func Dial(network, addr string, timeout time.Duration) (dnet.Session, error) {
 		return nil, err
 	}
 
-	return newConn(conn), nil
+	return NewTCPConn(conn.(*net.TCPConn)), nil
 }

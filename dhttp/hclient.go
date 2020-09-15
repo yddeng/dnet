@@ -216,6 +216,14 @@ func Get(url string) (*Request, error) {
 	return NewRequest(url, "GET")
 }
 
+func GetBytes(url string) ([]byte, error) {
+	req, err := Get(url)
+	if err != nil {
+		return nil, err
+	}
+	return req.Bytes()
+}
+
 func PostJson(url string, obj interface{}) (*Request, error) {
 	req, err := NewRequest(url, "POST")
 	if err != nil {

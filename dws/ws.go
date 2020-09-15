@@ -1,7 +1,6 @@
-package ws
+package dws
 
 import (
-	"errors"
 	"github.com/gorilla/websocket"
 	"github.com/yddeng/dnet"
 	"log"
@@ -19,7 +18,7 @@ type WSListener struct {
 	started  int32
 }
 
-func NewListener(network, addr, origin string, upgrader ...*websocket.Upgrader) (*WSListener, error) {
+func NewWSListener(network, addr, origin string, upgrader ...*websocket.Upgrader) (*WSListener, error) {
 	tcpAddr, err := net.ResolveTCPAddr(network, addr)
 	if err != nil {
 		return nil, err
@@ -56,11 +55,11 @@ func (this *WSListener) Close() {
 func (this *WSListener) Listen(newClient func(dnet.Session)) error {
 
 	if newClient == nil {
-		return errors.New("newClient is nil")
+		return dnet.ErrNewClientNil
 	}
 
 	if !atomic.CompareAndSwapInt32(&this.started, 0, 1) {
-		return errors.New("tcpListener is started")
+		return dnet.ErrStateFailed
 	}
 
 	http.HandleFunc(this.origin, func(w http.ResponseWriter, r *http.Request) {
@@ -69,7 +68,7 @@ func (this *WSListener) Listen(newClient func(dnet.Session)) error {
 			log.Printf("wssocket Upgrade failed:%s\n", err.Error())
 			return
 		}
-		newClient(newConn(c))
+		newClient(NewWSConn(c))
 	})
 
 	go func() {
@@ -84,12 +83,12 @@ func (this *WSListener) Listen(newClient func(dnet.Session)) error {
 	return nil
 }
 
-func Dial(addr, path string, timeout time.Duration) (dnet.Session, error) {
+func DialWS(addr, path string, timeout time.Duration) (dnet.Session, error) {
 	u := url.URL{Scheme: "ws", Host: addr, Path: path}
 	websocket.DefaultDialer.HandshakeTimeout = timeout
 	conn, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
 	if err != nil {
 		return nil, err
 	}
-	return newConn(conn), nil
+	return NewWSConn(conn), nil
 }

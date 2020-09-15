@@ -1,9 +1,9 @@
-package aio
+package daio
 
 import (
 	"bytes"
 	"github.com/yddeng/dnet"
-	"github.com/yddeng/dnet/socket/aio/poller"
+	"github.com/yddeng/dnet/daio/poller"
 	"io"
 	"net"
 	"syscall"
@@ -33,8 +33,8 @@ type AioConn struct {
 	codec       dnet.Codec   //编解码器
 	writeBuffer bytes.Buffer //发送buffer
 
-	msgCallback   func(interface{}, error) //消息回调
-	closeCallback func(string)             //关闭连接回调
+	msgCallback   func(interface{}, error)                  //消息回调
+	closeCallback func(session dnet.Session, reason string) //关闭连接回调
 
 	lock sync.Mutex
 }
@@ -80,7 +80,7 @@ func (c *AioConn) handleClose(reason string) {
 	_ = syscall.Close(c.fd)
 
 	if c.closeCallback != nil {
-		c.closeCallback(reason)
+		c.closeCallback(c, reason)
 	}
 
 }
@@ -167,7 +167,7 @@ func (this *AioConn) SetCodec(codec dnet.Codec) {
 	this.lock.Unlock()
 }
 
-func (this *AioConn) SetCloseCallBack(closeCallback func(reason string)) {
+func (this *AioConn) SetCloseCallBack(closeCallback func(session dnet.Session, reason string)) {
 	this.lock.Lock()
 	defer this.lock.Unlock()
 	this.closeCallback = closeCallback
@@ -193,7 +193,7 @@ func (this *AioConn) Start(msgCb func(interface{}, error)) error {
 
 	this.lock.Lock()
 	if this.flag == started {
-		return dnet.ErrSessionStarted
+		return dnet.ErrStateFailed
 	}
 	this.flag = started
 
@@ -235,10 +235,10 @@ func (this *AioConn) SendBytes(data []byte) error {
 	this.lock.Lock()
 
 	if this.flag == 0 {
-		return dnet.ErrNotStarted
+		return dnet.ErrStateFailed
 	}
 	if this.flag == closed {
-		return dnet.ErrSessionClosed
+		return dnet.ErrStateFailed
 	}
 	this.lock.Unlock()
 

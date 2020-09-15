@@ -1,7 +1,8 @@
-package rpc
+package drpc
 
 type Request struct {
 	SeqNo    uint64
+	Method   string // 请求方法名
 	Data     interface{}
 	NeedResp bool
 }
