@@ -3,16 +3,18 @@ package main
 import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
+	"github.com/yddeng/dnet"
+	"github.com/yddeng/dnet/dtcp"
 	"github.com/yddeng/dnet/example/cs/codec"
 	"github.com/yddeng/dnet/example/module/message"
 	"github.com/yddeng/dnet/example/pb"
-	"github.com/yddeng/dnet/socket/tcp"
+	"github.com/yddeng/dutil/buffer"
 	"time"
 )
 
 func main() {
 	addr := "localhost:1234"
-	session, err := tcp.Dial("tcp", addr, 0)
+	session, err := dtcp.DialTCP("tcp", addr, 0)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -20,7 +22,7 @@ func main() {
 	fmt.Printf("conn ok,remote:%s\n", session.RemoteAddr())
 
 	session.SetCodec(codec.NewCodec())
-	session.SetCloseCallBack(func(reason string) {
+	session.SetCloseCallBack(func(session dnet.Session, reason string) {
 		fmt.Println("onClose", reason)
 	})
 	_ = session.Start(func(data interface{}, err2 error) {
@@ -35,7 +37,20 @@ func main() {
 	fmt.Println(session.Send(message.NewMessage(0, &pb.EchoToS{Msg: proto.String("hi server")})))
 	fmt.Println(session.Send(message.NewMessage(0, &pb.EchoToS{Msg: proto.String("hi server")})))
 	time.Sleep(5 * time.Second)
-	fmt.Println(session.Send(message.NewMessage(0, &pb.EchoToS{Msg: proto.String("hi server")})))
+
+	bt, _ := proto.Marshal(&pb.EchoToS{Msg: proto.String("hi server")})
+	msgLen := len(bt) + 2 + 2 + 2
+	buff := buffer.NewBufferWithCap(msgLen)
+	//msgLen+cmd+msgID
+	//写入data长度
+	buff.WriteUint16BE(uint16(len(bt)))
+	//写入cmd
+	buff.WriteUint16BE(0)
+	//msgID
+	buff.WriteUint16BE(1)
+	//data数据
+	buff.WriteBytes(bt)
+	fmt.Println(session.SendBytes(buff.Bytes()))
 
 	select {}
 

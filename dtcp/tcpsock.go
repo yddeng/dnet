@@ -23,9 +23,8 @@ type TCPConn struct {
 
 	codec dnet.Codec // 编解码器
 
-	sendNotifyCh  chan struct{}    // 发送消息通知
-	sendBufferCh  chan []byte      // 发送队列
-	pendingEncode chan interface{} // 待编码发送的消息
+	sendNotifyCh  chan struct{} // 发送消息通知
+	sendMessageCh chan *message // 发送队列
 
 	msgCallback func(interface{}, error) // 消息回调
 
@@ -35,12 +34,16 @@ type TCPConn struct {
 	lock sync.Mutex
 }
 
+type message struct {
+	needEncode bool
+	data       interface{}
+}
+
 func NewTCPConn(conn *net.TCPConn) *TCPConn {
 	return &TCPConn{
 		conn:          conn,
 		sendNotifyCh:  make(chan struct{}, 1),
-		sendBufferCh:  make(chan []byte, sendBufChanSize),
-		pendingEncode: make(chan interface{}, sendBufChanSize),
+		sendMessageCh: make(chan *message, sendBufChanSize),
 	}
 }
 
@@ -170,33 +173,38 @@ func (this *TCPConn) receiveThread() {
 func (this *TCPConn) sendThread() {
 	for {
 		select {
-		case o := <-this.pendingEncode:
-			// 需要编码的消息
-			codec := this.getCodec()
-			if codec == nil {
-				this.msgCallback(nil, dnet.ErrNoCodec)
-				break
+		case msg := <-this.sendMessageCh:
+			var err error
+			var data []byte
+
+			if msg.needEncode {
+				// 需要编码的消息
+				codec := this.getCodec()
+				if codec == nil {
+					this.msgCallback(nil, dnet.ErrNoCodec)
+					break
+				}
+
+				data, err = codec.Encode(msg.data)
+				if err != nil {
+					this.msgCallback(nil, err)
+					break
+				}
+			} else {
+				data = msg.data.([]byte)
 			}
 
-			data, err := codec.Encode(o)
-			if err != nil {
-				this.msgCallback(nil, err)
-				break
-			}
+			if data != nil && len(data) != 0 {
+				// 发送的消息
+				_, writeTimeout := this.getTimeout()
+				if writeTimeout > 0 {
+					this.conn.SetWriteDeadline(time.Now().Add(writeTimeout))
+				}
 
-			this.sendBufferCh <- data
-			dnet.SendNotifyChan(this.sendNotifyCh)
-
-		case data := <-this.sendBufferCh:
-			// 直接发送的消息
-			_, writeTimeout := this.getTimeout()
-			if writeTimeout > 0 {
-				this.conn.SetWriteDeadline(time.Now().Add(writeTimeout))
-			}
-
-			_, err := this.conn.Write(data)
-			if err != nil {
-				this.msgCallback(nil, err)
+				_, err = this.conn.Write(data)
+				if err != nil {
+					this.msgCallback(nil, err)
+				}
 			}
 
 		default:
@@ -228,7 +236,15 @@ func (this *TCPConn) Send(o interface{}) error {
 		return dnet.ErrNoCodec
 	}
 
-	this.pendingEncode <- o
+	//非堵塞
+	if len(this.sendMessageCh) == sendBufChanSize {
+		return dnet.ErrSendChanFull
+	}
+
+	this.sendMessageCh <- &message{
+		needEncode: true,
+		data:       o,
+	}
 	dnet.SendNotifyChan(this.sendNotifyCh)
 	return nil
 }
@@ -245,11 +261,14 @@ func (this *TCPConn) SendBytes(data []byte) error {
 	this.lock.Unlock()
 
 	//非堵塞
-	if len(this.sendBufferCh) == sendBufChanSize {
+	if len(this.sendMessageCh) == sendBufChanSize {
 		return dnet.ErrSendChanFull
 	}
 
-	this.sendBufferCh <- data
+	this.sendMessageCh <- &message{
+		needEncode: false,
+		data:       data,
+	}
 	dnet.SendNotifyChan(this.sendNotifyCh)
 	return nil
 }

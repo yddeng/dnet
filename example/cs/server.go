@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
 	"github.com/yddeng/dnet"
+	"github.com/yddeng/dnet/dtcp"
 	"github.com/yddeng/dnet/example/cs/codec"
 	"github.com/yddeng/dnet/example/module/handler"
 	"github.com/yddeng/dnet/example/module/message"
 	"github.com/yddeng/dnet/example/pb"
-	"github.com/yddeng/dnet/socket/tcp"
 	"reflect"
 	"time"
 )
@@ -26,7 +26,7 @@ func main() {
 	gHandler.RegisterCallBack(&pb.EchoToS{}, echoToC)
 
 	addr := "localhost:1234"
-	l, err := tcp.NewListener("tcp", addr)
+	l, err := dtcp.NewTCPListener("tcp", addr)
 	if err != nil {
 		fmt.Println(1, err)
 		return
@@ -37,7 +37,7 @@ func main() {
 		// 超时时间
 		session.SetTimeout(10*time.Second, 0)
 		session.SetCodec(codec.NewCodec())
-		session.SetCloseCallBack(func(reason string) {
+		session.SetCloseCallBack(func(session dnet.Session, reason string) {
 			fmt.Println("onClose", reason)
 		})
 		fmt.Println("newClient ", session.RemoteAddr(), reflect.TypeOf(session.RemoteAddr()))
