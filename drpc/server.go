@@ -14,7 +14,7 @@ type Server struct {
 
 type MethodHandler func(replyer *Replyer, req interface{})
 
-func (server *Server) Register(name string, h MethodHandler) error {
+func (server *Server) Register(name string, h MethodHandler) {
 	if name == "" {
 		panic("name == ''")
 	}
@@ -26,10 +26,10 @@ func (server *Server) Register(name string, h MethodHandler) error {
 	defer server.Unlock()
 	_, ok := server.methods[name]
 	if ok {
-		return fmt.Errorf("duplicate method:%s", name)
+		panic(fmt.Sprintf("duplicate method:%s", name))
 	}
 	server.methods[name] = h
-	return nil
+
 }
 
 func (server *Server) OnRPCRequest(channel RPCChannel, req *Request) error {
