@@ -8,12 +8,17 @@ import (
 	"github.com/yddeng/dnet/dtcp"
 	"github.com/yddeng/dnet/example/pb"
 	"github.com/yddeng/dnet/example/rpc/codec"
+	"time"
 )
 
-func echo(req *pb.EchoToS, resp *pb.EchoToC) {
+func echo(replyer *drpc.Replyer, arg interface{}) {
+	req := arg.(*pb.EchoToS)
 	fmt.Println("echo", req.GetMsg())
-	resp.Msg = proto.String(req.GetMsg())
 
+	err := replyer.Reply(&pb.EchoToC{Msg: proto.String(req.GetMsg())}, nil)
+	if err != nil {
+		fmt.Println(err)
+	}
 }
 
 type channel struct {
@@ -32,10 +37,10 @@ func main() {
 
 	rpcServer := drpc.NewServer()
 	rpcClient := drpc.NewClient()
-	rpcServer.Register(echo)
+	rpcServer.Register(proto.MessageName(&pb.EchoToS{}), echo)
 
 	addr := "localhost:7756"
-	session, err := dtcp.Dial("tcp", addr, 0)
+	session, err := dtcp.DialTCP("tcp", addr, 0)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -43,7 +48,7 @@ func main() {
 	fmt.Printf("conn ok,remote:%s\n", session.RemoteAddr())
 
 	session.SetCodec(codec.NewRpcCodec())
-	session.SetCloseCallBack(func(reason string) {
+	session.SetCloseCallBack(func(session dnet.Session, reason string) {
 		fmt.Println("onClose", reason)
 	})
 	_ = session.Start(func(data interface{}, err2 error) {
@@ -68,8 +73,8 @@ func main() {
 	msg := &pb.EchoToS{
 		Msg: proto.String("hello node1,i'm node2"),
 	}
-	fmt.Println("AsynCall")
-	rpcClient.AsynCall(&channel{session: session}, msg, func(i interface{}, e error) {
+	fmt.Println("Start AsynCall")
+	rpcClient.AsynCall(&channel{session: session}, proto.MessageName(msg), msg, 8*time.Second, func(i interface{}, e error) {
 		if e != nil {
 			fmt.Println("AsynCall", e)
 			return
@@ -78,8 +83,8 @@ func main() {
 		fmt.Println("node2 AsynCall -->", resp.GetMsg())
 	})
 
-	fmt.Println("Post")
-	rpcClient.Post(&channel{session: session}, msg)
+	fmt.Println("Start Post")
+	rpcClient.Post(&channel{session: session}, proto.MessageName(msg), msg)
 
 	//fmt.Println("SynsCall")
 	//ret, err := rpcClient.SynsCall(&channel{session: session}, msg)

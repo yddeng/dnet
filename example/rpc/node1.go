@@ -4,18 +4,18 @@ import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
 	"github.com/yddeng/dnet"
+	"github.com/yddeng/dnet/drpc"
+	"github.com/yddeng/dnet/dtcp"
 	"github.com/yddeng/dnet/example/pb"
 	"github.com/yddeng/dnet/example/rpc/codec"
-	"github.com/yddeng/dnet/rpc"
-	"github.com/yddeng/dnet/socket/tcp"
-	"reflect"
 	"time"
 )
 
-func echo(req *pb.EchoToS, resp *pb.EchoToC) {
+func echo(replyer *drpc.Replyer, arg interface{}) {
+	req := arg.(*pb.EchoToS)
 	fmt.Println("echo", req.GetMsg())
-	resp.Msg = proto.String(req.GetMsg())
 
+	replyer.Reply(&pb.EchoToC{Msg: proto.String(req.GetMsg())}, nil)
 }
 
 type channel struct {
@@ -34,10 +34,10 @@ func main() {
 
 	rpcServer := drpc.NewServer()
 	rpcClient := drpc.NewClient()
-	rpcServer.Register(echo)
+	rpcServer.Register(proto.MessageName(&pb.EchoToS{}), echo)
 
 	addr := "localhost:7756"
-	l, err := tcp.NewListener("tcp", addr)
+	l, err := dtcp.NewTCPListener("tcp", addr)
 	if err != nil {
 		fmt.Println(1, err)
 		return
@@ -48,11 +48,10 @@ func main() {
 		// 超时时间
 		session.SetTimeout(10*time.Second, 0)
 		session.SetCodec(codec.NewRpcCodec())
-		session.SetCloseCallBack(func(reason string) {
+		session.SetCloseCallBack(func(session dnet.Session, reason string) {
 			fmt.Println("onClose", reason)
 		})
 
-		fmt.Println("newClient ", session.RemoteAddr(), reflect.TypeOf(session.RemoteAddr()))
 		errr := session.Start(func(data interface{}, err error) {
 			//fmt.Println("data", data, "err", err)
 			if err != nil {
@@ -80,8 +79,8 @@ func main() {
 		msg := &pb.EchoToS{
 			Msg: proto.String("hello node2,i'm node1"),
 		}
-		fmt.Println("AsynCall")
-		rpcClient.AsynCall(&channel{session: session}, msg, func(i interface{}, e error) {
+		fmt.Println("Start AsynCall")
+		rpcClient.AsynCall(&channel{session: session}, proto.MessageName(msg), msg, 8*time.Second, func(i interface{}, e error) {
 			if e != nil {
 				fmt.Println("AsynCall", e)
 				return
@@ -90,8 +89,8 @@ func main() {
 			fmt.Println("node1 AsynCall -->", resp.GetMsg())
 		})
 
-		fmt.Println("Post")
-		rpcClient.Post(&channel{session: session}, msg)
+		fmt.Println("Start Post")
+		rpcClient.Post(&channel{session: session}, proto.MessageName(msg), msg)
 	})
 	if err != nil {
 		fmt.Println(3, err)

@@ -3,7 +3,7 @@ package codec
 import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
-	"github.com/yddeng/dnet/rpc"
+	"github.com/yddeng/dnet/drpc"
 	"github.com/yddeng/dutil/buffer"
 	"io"
 	"reflect"
@@ -96,10 +96,12 @@ func (decoder *RpcCodec) unPack() (interface{}, error) {
 		}
 		req := &drpc.Request{
 			SeqNo:    decoder.seqNo,
+			Method:   name,
 			Data:     msg,
 			NeedResp: decoder.flag == RPC_Req_NeedResp,
 		}
 		ret = req
+		fmt.Println(req)
 	case RPC_Response:
 		resp := &drpc.Response{SeqNo: decoder.seqNo}
 		if decoder.flag == RPC_Resp_Error {
@@ -138,6 +140,7 @@ func (encoder *RpcCodec) Encode(o interface{}) ([]byte, error) {
 	switch o.(type) {
 	case *drpc.Request:
 		request := o.(*drpc.Request)
+		fmt.Println(request)
 		seqNo = request.SeqNo
 		if request.NeedResp {
 			flag = RPC_Req_NeedResp
