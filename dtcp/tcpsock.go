@@ -1,6 +1,7 @@
 package dtcp
 
 import (
+	"fmt"
 	"github.com/yddeng/dnet"
 	"net"
 	"sync"
@@ -191,7 +192,12 @@ func (this *TCPConn) sendThread() {
 					break
 				}
 			} else {
-				data = msg.data.([]byte)
+				var ok bool
+				data, ok = msg.data.([]byte)
+				if !ok {
+					this.msgCallback(nil, fmt.Errorf("reflect failed, data is not []byte"))
+					break
+				}
 			}
 
 			if data != nil && len(data) != 0 {
