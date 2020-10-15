@@ -68,7 +68,7 @@ type Replyer struct {
 }
 
 func (r *Replyer) Reply(ret interface{}, err error) error {
-	if !r.req.NeedResp && atomic.CompareAndSwapInt32(&r.fired, 0, 1) {
+	if !r.req.NeedResp || !atomic.CompareAndSwapInt32(&r.fired, 0, 1) {
 		return fmt.Errorf("reply failde, needResp %v , fired %d", r.req.NeedResp, atomic.LoadInt32(&r.fired))
 	}
 
