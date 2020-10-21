@@ -90,6 +90,7 @@ func (this *WSConn) Start(msgCb func(interface{}, error)) error {
 
 	this.lock.Lock()
 	if this.flag == started {
+		this.lock.Unlock()
 		return dnet.ErrStateFailed
 	}
 	this.flag = started
@@ -174,9 +175,11 @@ func (this *WSConn) SendBytes(data []byte) error {
 
 	this.lock.Lock()
 	if this.flag == 0 {
+		this.lock.Unlock()
 		return dnet.ErrStateFailed
 	}
 	if this.flag == closed {
+		this.lock.Unlock()
 		return dnet.ErrStateFailed
 	}
 	this.lock.Unlock()

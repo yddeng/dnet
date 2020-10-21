@@ -13,7 +13,7 @@ const (
 	closed  = 0x02 //0000 0010
 )
 
-const sendBufChanSize = 1024
+const sendBufChanSize = 10240
 
 type TCPConn struct {
 	state        byte
@@ -50,8 +50,8 @@ func NewTCPConn(conn *net.TCPConn) *TCPConn {
 
 //读写超时
 func (this *TCPConn) SetTimeout(readTimeout, writeTimeout time.Duration) {
-	defer this.lock.Unlock()
 	this.lock.Lock()
+	defer this.lock.Unlock()
 
 	this.readTimeout = readTimeout
 	this.writeTimeout = writeTimeout
@@ -115,11 +115,13 @@ func (this *TCPConn) Start(msgCb func(interface{}, error)) error {
 
 	this.lock.Lock()
 	if this.state == started {
+		this.lock.Unlock()
 		return dnet.ErrStateFailed
 	}
 	this.state = started
 
 	if this.codec == nil {
+		this.lock.Unlock()
 		return dnet.ErrNoCodec
 	}
 
@@ -234,6 +236,7 @@ func (this *TCPConn) Send(o interface{}) error {
 
 	this.lock.Lock()
 	if this.state != started {
+		this.lock.Unlock()
 		return dnet.ErrStateFailed
 	}
 	this.lock.Unlock()
@@ -262,6 +265,7 @@ func (this *TCPConn) SendBytes(data []byte) error {
 
 	this.lock.Lock()
 	if this.state != started {
+		this.lock.Unlock()
 		return dnet.ErrStateFailed
 	}
 	this.lock.Unlock()

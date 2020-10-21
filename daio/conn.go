@@ -71,6 +71,7 @@ func (c *AioConn) handleClose(reason string) {
 
 	c.lock.Lock()
 	if (c.flag & closed) > 0 {
+		c.lock.Unlock()
 		return
 	}
 	c.flag = closed
@@ -118,6 +119,7 @@ func (c *AioConn) handleRead() {
 func (c *AioConn) handleWrite(fd int) {
 	c.lock.Lock()
 	if c.flag == closed {
+		c.lock.Unlock()
 		return
 	}
 
@@ -126,6 +128,7 @@ func (c *AioConn) handleWrite(fd int) {
 	n, err := syscall.Write(c.fd, data)
 	if err != nil {
 		if err == syscall.EAGAIN {
+			c.lock.Unlock()
 			return
 		}
 		c.lock.Unlock()
@@ -150,8 +153,8 @@ func (c *AioConn) handleWrite(fd int) {
 
 //读写超时
 func (this *AioConn) SetTimeout(readTimeout, writeTimeout time.Duration) {
-	defer this.lock.Unlock()
 	this.lock.Lock()
+	defer this.lock.Unlock()
 
 	this.readTimeout = readTimeout
 	this.writeTimeout = writeTimeout
@@ -193,11 +196,13 @@ func (this *AioConn) Start(msgCb func(interface{}, error)) error {
 
 	this.lock.Lock()
 	if this.flag == started {
+		this.lock.Unlock()
 		return dnet.ErrStateFailed
 	}
 	this.flag = started
 
 	if this.codec == nil {
+		this.lock.Unlock()
 		return dnet.ErrNoCodec
 	}
 
@@ -214,6 +219,7 @@ func (this *AioConn) Send(o interface{}) error {
 
 	this.lock.Lock()
 	if this.codec == nil {
+		this.lock.Unlock()
 		return dnet.ErrNoCodec
 	}
 	codec := this.codec
@@ -235,9 +241,11 @@ func (this *AioConn) SendBytes(data []byte) error {
 	this.lock.Lock()
 
 	if this.flag == 0 {
+		this.lock.Unlock()
 		return dnet.ErrStateFailed
 	}
 	if this.flag == closed {
+		this.lock.Unlock()
 		return dnet.ErrStateFailed
 	}
 	this.lock.Unlock()
@@ -258,6 +266,7 @@ func (this *AioConn) SendBytes(data []byte) error {
 func (this *AioConn) Close(reason string) {
 	this.lock.Lock()
 	if this.flag == closed {
+		this.lock.Unlock()
 		return
 	}
 	this.lock.Unlock()
