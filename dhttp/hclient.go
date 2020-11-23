@@ -66,7 +66,7 @@ func (rq *Request) PostFile(filename, filePath string) (*Request, error) {
 	return rq, nil
 }
 
-func (rq *Request) Body(data interface{}) *Request {
+func (rq *Request) WriteBody(data interface{}) *Request {
 	switch t := data.(type) {
 	case string:
 		bf := bytes.NewBufferString(t)
@@ -81,14 +81,14 @@ func (rq *Request) Body(data interface{}) *Request {
 }
 
 // Param adds query param in to request.
-func (rq *Request) Param(values urlpkg.Values) *Request {
-	rq.Body(values.Encode())
+func (rq *Request) WriteParam(values urlpkg.Values) *Request {
+	rq.WriteBody(values.Encode())
 	rq.req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	return rq
 }
 
 // XMLBody adds request raw body encoding by XML.
-func (rq *Request) XMLBody(obj interface{}) (*Request, error) {
+func (rq *Request) WriteXML(obj interface{}) (*Request, error) {
 	if rq.req.Body == nil && obj != nil {
 		byts, err := xml.Marshal(obj)
 		if err != nil {
@@ -102,7 +102,7 @@ func (rq *Request) XMLBody(obj interface{}) (*Request, error) {
 }
 
 // JSONBody adds request raw body encoding by JSON.
-func (rq *Request) JSONBody(obj interface{}) (*Request, error) {
+func (rq *Request) WriteJSON(obj interface{}) (*Request, error) {
 	if rq.req.Body == nil && obj != nil {
 		byts, err := json.Marshal(obj)
 		if err != nil {
@@ -117,8 +117,8 @@ func (rq *Request) JSONBody(obj interface{}) (*Request, error) {
 
 // String returns the body string in response.
 // it calls Response inner.
-func (rq *Request) String() (string, error) {
-	data, err := rq.Bytes()
+func (rq *Request) ToString() (string, error) {
+	data, err := rq.ToBytes()
 	if err != nil {
 		return "", err
 	}
@@ -128,7 +128,7 @@ func (rq *Request) String() (string, error) {
 
 // Bytes returns the body []byte in response.
 // it calls Response inner.
-func (rq *Request) Bytes() ([]byte, error) {
+func (rq *Request) ToBytes() ([]byte, error) {
 	if rq.body != nil {
 		return rq.body, nil
 	}
@@ -195,7 +195,7 @@ func pathExistAndMkdir(filename string) (err error) {
 // ToJSON returns the map that marshals from the body bytes as json in response .
 // it calls Response inner.
 func (rq *Request) ToJSON(v interface{}) error {
-	data, err := rq.Bytes()
+	data, err := rq.ToBytes()
 	if err != nil {
 		return err
 	}
@@ -205,7 +205,7 @@ func (rq *Request) ToJSON(v interface{}) error {
 // ToXML returns the map that marshals from the body bytes as xml in response .
 // it calls Response inner.
 func (rq *Request) ToXML(v interface{}) error {
-	data, err := rq.Bytes()
+	data, err := rq.ToBytes()
 	if err != nil {
 		return err
 	}
@@ -221,7 +221,7 @@ func GetBytes(url string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return req.Bytes()
+	return req.ToBytes()
 }
 
 func PostJson(url string, obj interface{}) (*Request, error) {
@@ -230,7 +230,7 @@ func PostJson(url string, obj interface{}) (*Request, error) {
 		return nil, err
 	}
 
-	req, err = req.JSONBody(obj)
+	req, err = req.WriteJSON(obj)
 	if err != nil {
 		return nil, err
 	}
@@ -244,7 +244,7 @@ func PostXML(url string, obj interface{}) (*Request, error) {
 		return nil, err
 	}
 
-	req, err = req.XMLBody(obj)
+	req, err = req.WriteXML(obj)
 	if err != nil {
 		return nil, err
 	}

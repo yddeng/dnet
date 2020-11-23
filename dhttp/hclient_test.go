@@ -19,7 +19,7 @@ func TestPostJson(t *testing.T) {
 		return
 	}
 
-	fmt.Println(req.String())
+	fmt.Println(req.ToString())
 }
 
 func TestRequest_Param(t *testing.T) {
@@ -32,7 +32,7 @@ func TestRequest_Param(t *testing.T) {
 	data := make(url.Values)
 	data.Set("1", "1")
 	data.Set("1", "2")
-	req.Param(data)
+	req.WriteParam(data)
 
 	_, err = req.Do()
 	if err != nil {
@@ -40,7 +40,7 @@ func TestRequest_Param(t *testing.T) {
 		return
 	}
 
-	fmt.Println(req.String())
+	fmt.Println(req.ToString())
 }
 
 func TestRequest_PostFile(t *testing.T) {

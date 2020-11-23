@@ -246,9 +246,9 @@ func (this *TCPConn) Send(o interface{}) error {
 	}
 
 	//非堵塞
-	if len(this.sendMessageCh) == sendBufChanSize {
-		return dnet.ErrSendChanFull
-	}
+	//if len(this.sendMessageCh) == sendBufChanSize {
+	//	return dnet.ErrSendChanFull
+	//}
 
 	this.sendMessageCh <- &message{
 		needEncode: true,
@@ -271,9 +271,9 @@ func (this *TCPConn) SendBytes(data []byte) error {
 	this.lock.Unlock()
 
 	//非堵塞
-	if len(this.sendMessageCh) == sendBufChanSize {
-		return dnet.ErrSendChanFull
-	}
+	//if len(this.sendMessageCh) == sendBufChanSize {
+	//	return dnet.ErrSendChanFull
+	//}
 
 	this.sendMessageCh <- &message{
 		needEncode: false,
