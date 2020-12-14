@@ -1,4 +1,4 @@
-package example
+package dnet
 
 import (
 	"fmt"
@@ -16,19 +16,20 @@ const (
 	buffSize = 65535   // 缓存容量(与lenSize有关，2字节最大65535）
 )
 
-type Codec struct {
-	readBuf *buffer.Buffer
-	dataLen uint16
+type DefCodec struct {
+	readBuf  *buffer.Buffer
+	dataLen  uint16
+	readHead bool
 }
 
-func NewCodec() *Codec {
-	return &Codec{
+func NewCodec() *DefCodec {
+	return &DefCodec{
 		readBuf: &buffer.Buffer{},
 	}
 }
 
 //解码
-func (decoder *Codec) Decode(reader io.Reader) (interface{}, error) {
+func (decoder *DefCodec) Decode(reader io.Reader) (interface{}, error) {
 	for {
 		msg, err := decoder.unPack()
 
@@ -46,14 +47,15 @@ func (decoder *Codec) Decode(reader io.Reader) (interface{}, error) {
 	}
 }
 
-func (decoder *Codec) unPack() ([]byte, error) {
+func (decoder *DefCodec) unPack() ([]byte, error) {
 
-	if decoder.dataLen == 0 {
+	if !decoder.readHead {
 		if decoder.readBuf.Len() < headSize {
 			return nil, nil
 		}
 
 		decoder.dataLen, _ = decoder.readBuf.ReadUint16BE()
+		decoder.readHead = true
 	}
 
 	if decoder.readBuf.Len() < int(decoder.dataLen) {
@@ -62,13 +64,12 @@ func (decoder *Codec) unPack() ([]byte, error) {
 
 	data, _ := decoder.readBuf.ReadBytes(int(decoder.dataLen))
 
-	//将消息长度置为0，用于下一次验证
-	decoder.dataLen = 0
+	decoder.readHead = false
 	return data, nil
 }
 
 //编码
-func (encoder *Codec) Encode(o interface{}) ([]byte, error) {
+func (encoder *DefCodec) Encode(o interface{}) ([]byte, error) {
 
 	data, ok := o.([]byte)
 	if !ok {
