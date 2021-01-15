@@ -87,7 +87,7 @@ func NewClient() *Client {
 	return client
 }
 
-func NewClientWithTimeWheel(timerMgr timer.TimerMgr) *Client {
+func NewClientWithTimerMgr(timerMgr timer.TimerMgr) *Client {
 	return &Client{
 		timerMgr: timerMgr,
 	}
