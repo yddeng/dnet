@@ -13,7 +13,7 @@ const (
 	closed  = 0x02 //0000 0010
 )
 
-const sendBufChanSize = 10240
+const sendBufChanSize = 1024
 
 type TCPConn struct {
 	state        byte
@@ -197,7 +197,7 @@ func (this *TCPConn) sendThread() {
 				var ok bool
 				data, ok = msg.data.([]byte)
 				if !ok {
-					this.msgCallback(nil, fmt.Errorf("reflect failed, data is not []byte"))
+					this.msgCallback(nil, fmt.Errorf("dtcp: sendTread reflect failed, data is not []byte"))
 					break
 				}
 			}
@@ -291,11 +291,11 @@ func (this *TCPConn) Close(reason string) {
 	this.lock.Lock()
 	defer this.lock.Unlock()
 
-	this.closeReason = reason
 	if this.state == 0 || this.state == closed {
 		return
 	}
 
+	this.closeReason = reason
 	this.state = closed
 	this.conn.CloseRead()
 	// 触发循环

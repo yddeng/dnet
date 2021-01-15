@@ -14,13 +14,6 @@ import (
 // 仅支持protobuf
 
 const (
-	RPC_Request      = 0x01 //rpc请求
-	RPC_Req_NeedResp = 0x03 //rpc请求需要返回
-	RPC_Response     = 0x10 //rpc回复
-	RPC_Resp_Error   = 0x30 //rpc回复错误
-)
-
-const (
 	seqSize   = 8                                        // 消息的索引 //uint64
 	flagSize  = 1                                        // 消息flag //byte
 	nameSize  = 1                                        // 协议名长度 //uint8
@@ -44,11 +37,36 @@ func NewRpcCodec() *RpcCodec {
 	}
 }
 
-func checkFlag(flag byte) byte {
-	if flag&RPC_Request != 0 {
-		return RPC_Request
+type flag byte
+
+const (
+	message flag = 0x80
+	rpcReq  flag = 0x40
+	rpcResp flag = 0x20
+)
+
+func (this flag) setType(tt flag) flag {
+	switch tt {
+	case message:
+		return this | message
+	case rpcReq:
+		return this | rpcReq
+	case rpcResp:
+		return this | rpcResp
+	default:
+		panic("invalid type")
 	}
-	return RPC_Response
+}
+
+func (this flag) getType() flag {
+	if this&message > 0 {
+		return message
+	} else if this&rpcReq > 0 {
+		return rpcReq
+	} else if this&rpcResp > 0 {
+		return rpcResp
+	}
+	return message
 }
 
 //解码
@@ -84,9 +102,10 @@ func (decoder *RpcCodec) unPack() (interface{}, error) {
 	}
 
 	var ret interface{}
-	var errr error
-	switch checkFlag(decoder.flag) {
-	case RPC_Request:
+	var err error
+	tt := flag(decoder.flag).getType()
+	switch tt {
+	case rpcReq:
 		name, _ := decoder.readBuf.ReadString(int(decoder.nameLen))
 		body, _ := decoder.readBuf.ReadBytes(int(decoder.bodyLen))
 
@@ -94,44 +113,38 @@ func (decoder *RpcCodec) unPack() (interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
-		req := &drpc.Request{
-			SeqNo:    decoder.seqNo,
-			Method:   name,
-			Data:     msg,
-			NeedResp: decoder.flag == RPC_Req_NeedResp,
+		ret = &drpc.Request{
+			SeqNo:  decoder.seqNo,
+			Method: name,
+			Data:   msg,
 		}
-		ret = req
-		fmt.Println(req)
-	case RPC_Response:
+	case rpcResp:
 		resp := &drpc.Response{SeqNo: decoder.seqNo}
-		if decoder.flag == RPC_Resp_Error {
-			errStr, _ := decoder.readBuf.ReadString(int(decoder.bodyLen))
-			resp.Err = fmt.Errorf(errStr)
 
-		} else {
-			name, _ := decoder.readBuf.ReadString(int(decoder.nameLen))
-			body, _ := decoder.readBuf.ReadBytes(int(decoder.bodyLen))
+		name, _ := decoder.readBuf.ReadString(int(decoder.nameLen))
+		body, _ := decoder.readBuf.ReadBytes(int(decoder.bodyLen))
 
-			msg, err := Unmarshal(name, body)
-			if err != nil {
-				return nil, err
-			}
-			resp.Data = msg
+		msg, err := Unmarshal(name, body)
+		if err != nil {
+			return nil, err
 		}
+		resp.Data = msg
+
 		ret = resp
+	case message:
 	default:
-		errr = fmt.Errorf("unPack err: flag is %d", decoder.flag)
+		err = fmt.Errorf("unPack err: flag is %d", decoder.flag)
 	}
 
 	//将消息长度置为0，用于下一次验证
 	decoder.bodyLen = 0
-	return ret, errr
+	return ret, err
 }
 
 //编码
 func (encoder *RpcCodec) Encode(o interface{}) ([]byte, error) {
 	var seqNo uint64
-	var flag byte
+	var flag flag
 	var name string
 	var data []byte
 	var nameLen, bodyLen int
@@ -140,13 +153,8 @@ func (encoder *RpcCodec) Encode(o interface{}) ([]byte, error) {
 	switch o.(type) {
 	case *drpc.Request:
 		request := o.(*drpc.Request)
-		fmt.Println(request)
 		seqNo = request.SeqNo
-		if request.NeedResp {
-			flag = RPC_Req_NeedResp
-		} else {
-			flag = RPC_Request
-		}
+		flag = flag.setType(rpcReq)
 
 		name, data, err = Marshal(request.Data)
 		if err != nil {
@@ -155,16 +163,13 @@ func (encoder *RpcCodec) Encode(o interface{}) ([]byte, error) {
 	case *drpc.Response:
 		response := o.(*drpc.Response)
 		seqNo = response.SeqNo
-		if response.Err != nil {
-			flag = RPC_Resp_Error
-			data = []byte(response.Err.Error())
-		} else {
-			flag = RPC_Response
-			name, data, err = Marshal(response.Data)
-			if err != nil {
-				return nil, err
-			}
+		flag = flag.setType(rpcResp)
+
+		name, data, err = Marshal(response.Data)
+		if err != nil {
+			return nil, err
 		}
+
 	default:
 		return nil, fmt.Errorf("encode error , o'type is %s", reflect.TypeOf(o).String())
 	}
@@ -181,7 +186,7 @@ func (encoder *RpcCodec) Encode(o interface{}) ([]byte, error) {
 	//写入seqNo
 	buff.WriteUint64BE(seqNo)
 	//flag
-	buff.WriteByte(flag)
+	buff.WriteByte(byte(flag))
 	//namelen
 	buff.WriteUint8BE(uint8(nameLen))
 	//bodylen

@@ -3,15 +3,15 @@ package dnet
 import "fmt"
 
 var (
-	ErrNewClientNil = fmt.Errorf("newClient is nil")
+	ErrNewClientNil = fmt.Errorf("dnet: newClient is nil")
 
-	ErrStateFailed   = fmt.Errorf("session state failed")
-	ErrNoCodec       = fmt.Errorf("session without codec")
-	ErrNoMsgCallBack = fmt.Errorf("session without msgcallback")
-	ErrSendMsgNil    = fmt.Errorf("session send msg is nil")
-	ErrSendChanFull  = fmt.Errorf("session send chan is full")
+	ErrStateFailed   = fmt.Errorf("dnet: session state failed")
+	ErrNoCodec       = fmt.Errorf("dnet: session without codec")
+	ErrNoMsgCallBack = fmt.Errorf("dnet: session without msgcallback")
+	ErrSendMsgNil    = fmt.Errorf("dnet: session send msg is nil")
+	ErrSendChanFull  = fmt.Errorf("dnet: session send chan is full")
 )
 
 var (
-	ErrRPCTimeout = fmt.Errorf("rpc timeout")
+	ErrRPCTimeout = fmt.Errorf("dnet: rpc timeout")
 )

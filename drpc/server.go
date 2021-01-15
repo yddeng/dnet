@@ -9,56 +9,55 @@ import (
 
 type Server struct {
 	methods map[string]MethodHandler
-	*sync.RWMutex
+	mtx     sync.RWMutex
 }
 
 type MethodHandler func(replyer *Replyer, req interface{})
 
 func (server *Server) Register(name string, h MethodHandler) {
 	if name == "" {
-		panic("name == ''")
+		panic("drpc: Register name == ''")
 	}
 	if nil == h {
-		panic("h == nil")
+		panic("drpc: Register h == nil")
 	}
 
-	server.Lock()
-	defer server.Unlock()
+	server.mtx.Lock()
+	defer server.mtx.Unlock()
 	_, ok := server.methods[name]
 	if ok {
-		panic(fmt.Sprintf("duplicate method:%s", name))
+		panic(fmt.Sprintf("drpc: Register duplicate method:%s", name))
 	}
 	server.methods[name] = h
-
 }
 
 func (server *Server) OnRPCRequest(channel RPCChannel, req *Request) error {
-	var err error
-	replyer := &Replyer{Channel: channel, req: req}
-
-	server.RLock()
-	method, ok := server.methods[req.Method]
-	server.RUnlock()
-	if !ok {
-		err = fmt.Errorf("invalid method:%s", req.Method)
-		_ = replyer.reply(&Response{SeqNo: req.SeqNo, Err: err})
-		return err
+	if channel == nil || req == nil {
+		return fmt.Errorf("drpc: OnRPCRequest invalid argument")
 	}
 
+	server.mtx.RLock()
+	method, ok := server.methods[req.Method]
+	server.mtx.RUnlock()
+	if !ok {
+		return fmt.Errorf("drpc: OnRPCRequest invalid method %s", req.Method)
+	}
+
+	replyer := &Replyer{Channel: channel, req: req}
 	return server.callMethod(method, replyer)
 }
 
 func (server *Server) callMethod(method MethodHandler, replyer *Replyer) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			buf := make([]byte, 65535)
+			buf := make([]byte, 1024)
 			l := runtime.Stack(buf, false)
 			err = fmt.Errorf(fmt.Sprintf("%v: %s", r, buf[:l]))
 		}
 	}()
 
 	method(replyer, replyer.req.Data)
-	return nil
+	return
 }
 
 type Replyer struct {
@@ -67,12 +66,16 @@ type Replyer struct {
 	req     *Request
 }
 
-func (r *Replyer) Reply(ret interface{}, err error) error {
-	if !r.req.NeedResp || !atomic.CompareAndSwapInt32(&r.fired, 0, 1) {
-		return fmt.Errorf("reply failde, needResp %v , fired %d", r.req.NeedResp, atomic.LoadInt32(&r.fired))
+func (r *Replyer) Reply(ret interface{}) error {
+	if ret == nil {
+		return fmt.Errorf("drpc: Reply ret == nil")
 	}
 
-	return r.reply(&Response{SeqNo: r.req.SeqNo, Data: ret, Err: err})
+	if !atomic.CompareAndSwapInt32(&r.fired, 0, 1) {
+		return fmt.Errorf("drpc: Reply repeated reply %d ", atomic.LoadInt32(&r.fired))
+	}
+
+	return r.reply(&Response{SeqNo: r.req.SeqNo, Data: ret})
 }
 
 func (r *Replyer) reply(resp *Response) error {
@@ -82,6 +85,5 @@ func (r *Replyer) reply(resp *Response) error {
 func NewServer() *Server {
 	return &Server{
 		methods: map[string]MethodHandler{},
-		RWMutex: new(sync.RWMutex),
 	}
 }

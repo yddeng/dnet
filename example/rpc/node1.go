@@ -15,7 +15,7 @@ func echo(replyer *drpc.Replyer, arg interface{}) {
 	req := arg.(*pb.EchoToS)
 	fmt.Println("echo", req.GetMsg())
 
-	replyer.Reply(&pb.EchoToC{Msg: proto.String(req.GetMsg())}, nil)
+	replyer.Reply(&pb.EchoToC{Msg: proto.String(req.GetMsg())})
 }
 
 type channel struct {
@@ -46,7 +46,7 @@ func main() {
 	err = l.Listen(func(session dnet.Session) {
 		fmt.Println("new client", session.RemoteAddr().String())
 		// 超时时间
-		session.SetTimeout(10*time.Second, 0)
+		//session.SetTimeout(10*time.Second, 0)
 		session.SetCodec(codec.NewRpcCodec())
 		session.SetCloseCallBack(func(session dnet.Session, reason string) {
 			fmt.Println("onClose", reason)
@@ -79,18 +79,16 @@ func main() {
 		msg := &pb.EchoToS{
 			Msg: proto.String("hello node2,i'm node1"),
 		}
-		fmt.Println("Start AsynCall")
-		rpcClient.AsynCall(&channel{session: session}, proto.MessageName(msg), msg, 8*time.Second, func(i interface{}, e error) {
+		fmt.Println("Start Call")
+		rpcClient.Call(&channel{session: session}, proto.MessageName(msg), msg, drpc.DefaultRPCTimeout, func(i interface{}, e error) {
 			if e != nil {
-				fmt.Println("AsynCall", e)
+				fmt.Println("Call", e)
 				return
 			}
 			resp := i.(*pb.EchoToC)
-			fmt.Println("node1 AsynCall -->", resp.GetMsg())
+			fmt.Println("node1 Call resp -->", resp.GetMsg())
 		})
 
-		fmt.Println("Start Post")
-		rpcClient.Post(&channel{session: session}, proto.MessageName(msg), msg)
 	})
 	if err != nil {
 		fmt.Println(3, err)

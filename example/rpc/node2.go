@@ -15,7 +15,8 @@ func echo(replyer *drpc.Replyer, arg interface{}) {
 	req := arg.(*pb.EchoToS)
 	fmt.Println("echo", req.GetMsg())
 
-	err := replyer.Reply(&pb.EchoToC{Msg: proto.String(req.GetMsg())}, nil)
+	time.Sleep(time.Second * 9)
+	err := replyer.Reply(&pb.EchoToC{Msg: proto.String(req.GetMsg())})
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -73,27 +74,15 @@ func main() {
 	msg := &pb.EchoToS{
 		Msg: proto.String("hello node1,i'm node2"),
 	}
-	fmt.Println("Start AsynCall")
-	rpcClient.AsynCall(&channel{session: session}, proto.MessageName(msg), msg, 8*time.Second, func(i interface{}, e error) {
+	fmt.Println("Start Call")
+	rpcClient.Call(&channel{session: session}, proto.MessageName(msg), msg, drpc.DefaultRPCTimeout, func(i interface{}, e error) {
 		if e != nil {
-			fmt.Println("AsynCall", e)
+			fmt.Println("Call", e)
 			return
 		}
 		resp := i.(*pb.EchoToC)
-		fmt.Println("node2 AsynCall -->", resp.GetMsg())
+		fmt.Println("node2 Call resp -->", resp.GetMsg())
 	})
-
-	fmt.Println("Start Post")
-	rpcClient.Post(&channel{session: session}, proto.MessageName(msg), msg)
-
-	//fmt.Println("SynsCall")
-	//ret, err := rpcClient.SynsCall(&channel{session: session}, msg)
-	//if err != nil {
-	//	fmt.Println("SynsCall", err)
-	//	return
-	//}
-	//resp := ret.(*pb.EchoToC)
-	//fmt.Println("node2 SynsCall -->", resp.GetMsg())
 
 	select {}
 

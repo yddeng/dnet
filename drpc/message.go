@@ -1,16 +1,14 @@
 package drpc
 
 type Request struct {
-	SeqNo    uint64
-	Method   string // 请求方法名
-	Data     interface{}
-	NeedResp bool
+	SeqNo  uint64
+	Method string // 请求方法名
+	Data   interface{}
 }
 
 type Response struct {
 	SeqNo uint64
 	Data  interface{}
-	Err   error
 }
 
 type RPCChannel interface {
