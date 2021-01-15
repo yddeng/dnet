@@ -21,9 +21,9 @@ type Call struct {
 }
 
 type Client struct {
-	reqNo    uint64              // 请求号
-	timerMgr *timer.TimeWheelMgr // 低精度定时器，精度50ms，长度20。误差 50ms
-	pending  sync.Map            // map[uint64]*Call
+	reqNo    uint64         // 请求号
+	timerMgr timer.TimerMgr // 定时器
+	pending  sync.Map       // map[uint64]*Call
 }
 
 /*
@@ -78,9 +78,17 @@ func (client *Client) OnRPCResponse(resp *Response) error {
 
 }
 
+// 默认低精度定时器
 func NewClient() *Client {
 	client := &Client{
+		// 低精度定时器，精度50ms，长度20。误差 50ms
 		timerMgr: timer.NewTimeWheelMgr(time.Millisecond*50, 20),
 	}
 	return client
+}
+
+func NewClientWithTimeWheel(timerMgr timer.TimerMgr) *Client {
+	return &Client{
+		timerMgr: timerMgr,
+	}
 }

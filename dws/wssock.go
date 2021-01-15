@@ -42,8 +42,8 @@ func NewWSConn(conn *websocket.Conn) *WSConn {
 
 //读写超时
 func (this *WSConn) SetTimeout(readTimeout, writeTimeout time.Duration) {
-	defer this.lock.Unlock()
 	this.lock.Lock()
+	defer this.lock.Unlock()
 
 	this.readTimeout = readTimeout
 	this.writeTimeout = writeTimeout
@@ -142,7 +142,7 @@ func (this *WSConn) sendThread() {
 			_ = this.conn.SetWriteDeadline(time.Now().Add(this.writeTimeout))
 		}
 
-		err := this.conn.WriteMessage(websocket.TextMessage, data)
+		err := this.conn.WriteMessage(websocket.BinaryMessage, data)
 		if err != nil {
 			this.msgCallback(nil, err)
 		}
