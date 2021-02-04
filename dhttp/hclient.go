@@ -2,6 +2,7 @@ package dhttp
 
 import (
 	"bytes"
+	"compress/gzip"
 	"encoding/json"
 	"encoding/xml"
 	"io"
@@ -11,18 +12,13 @@ import (
 	urlpkg "net/url"
 	"os"
 	"path"
-	"time"
 )
 
 type Request struct {
-	c    *http.Client
-	req  *http.Request
-	resp *http.Response
-	body []byte // response body
-}
-
-func (rq *Request) Timeout(timeout time.Duration) {
-	rq.c.Timeout = timeout
+	Client *http.Client
+	req    *http.Request
+	resp   *http.Response
+	body   []byte // response body
 }
 
 func (rq *Request) Do() (resp *http.Response, err error) {
@@ -30,7 +26,11 @@ func (rq *Request) Do() (resp *http.Response, err error) {
 		return rq.resp, nil
 	}
 
-	resp, err = rq.c.Do(rq.req)
+	if rq.Client == nil {
+		rq.Client = &http.Client{}
+	}
+
+	resp, err = rq.Client.Do(rq.req)
 	if err != nil {
 		return nil, err
 	}
@@ -64,6 +64,19 @@ func (rq *Request) PostFile(filename, filePath string) (*Request, error) {
 	rq.req.Body = ioutil.NopCloser(buf)
 
 	return rq, nil
+}
+
+func (rq *Request) SetHeader(name, value string) *Request {
+	rq.req.Header.Set(name, value)
+	return rq
+}
+
+func (rq *Request) HttpRequest() *http.Request {
+	return rq.req
+}
+
+func (rq *Request) HttpResponse() *http.Response {
+	return rq.resp
 }
 
 func (rq *Request) WriteBody(data interface{}) *Request {
@@ -136,19 +149,16 @@ func (rq *Request) ToBytes() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	if resp.Body == nil {
-		return nil, nil
-	}
+	reader := resp.Body
 	defer resp.Body.Close()
-	//if resp.Header.Get("Content-Encoding") == "gzip" {
-	//	reader, err := gzip.NewReader(resp.Body)
-	//	if err != nil {
-	//		return nil, err
-	//	}
-	//	rq.body, err = ioutil.ReadAll(reader)
-	//	return rq.body, err
-	//}
-	rq.body, err = ioutil.ReadAll(resp.Body)
+
+	if resp.Header.Get("Content-Encoding") == "gzip" && resp.Header.Get("Accept-Encoding") != "" {
+		reader, err = gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+	}
+	rq.body, err = ioutil.ReadAll(reader)
 	return rq.body, err
 }
 
@@ -238,28 +248,15 @@ func PostJson(url string, obj interface{}) (*Request, error) {
 	return req, nil
 }
 
-func PostXML(url string, obj interface{}) (*Request, error) {
-	req, err := NewRequest(url, "POST")
-	if err != nil {
-		return nil, err
-	}
-
-	req, err = req.WriteXML(obj)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
 // new
 func NewRequest(url, method string) (rq *Request, err error) {
 	rq = new(Request)
 	rq.req, err = http.NewRequest(method, url, nil)
-	if err != nil {
-		return
-	}
-
-	rq.c = &http.Client{}
 	return
+}
+
+// build URL params
+// set params ?a=b&b=c
+func BuildURLParams(url string, urlValue urlpkg.Values) string {
+	return url + "?" + urlValue.Encode()
 }
