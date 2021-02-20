@@ -38,6 +38,14 @@ func (rq *Request) Do() (resp *http.Response, err error) {
 	return
 }
 
+func (rq *Request) DoEnd() {
+	resp, err := rq.Do()
+	if err != nil {
+		return
+	}
+	resp.Body.Close()
+}
+
 // PostFile add a post file to the request
 func (rq *Request) PostFile(filename, filePath string) (*Request, error) {
 	srcFile, err := os.Open(filePath)
