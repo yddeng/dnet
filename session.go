@@ -37,7 +37,7 @@ type Session interface {
 	Send(o interface{}) error
 
 	// 发送数据，不经过编码器直接发送
-	SendBytes(data []byte) error
+	//SendBytes(data []byte) error
 
 	// 给session绑定用户数据
 	SetContext(ctx interface{})

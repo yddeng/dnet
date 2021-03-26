@@ -31,21 +31,19 @@ func (l *TCPListener) Listen(newClient func(session dnet.Session)) error {
 		return dnet.ErrStateFailed
 	}
 
-	go func() {
-		for {
-			conn, err := l.listener.Accept()
-			if err != nil {
-				if ne, ok := err.(net.Error); ok && ne.Temporary() {
-					continue
-				} else {
-					return
-				}
+	for {
+		conn, err := l.listener.Accept()
+		if err != nil {
+			if ne, ok := err.(net.Error); ok && ne.Temporary() {
+				time.Sleep(time.Millisecond * 100)
+				continue
+			} else {
+				return err
 			}
-			newClient(NewTCPConn(conn.(*net.TCPConn)))
 		}
-	}()
+		newClient(NewTCPConn(conn.(*net.TCPConn)))
+	}
 
-	return nil
 }
 
 func (l *TCPListener) Addr() net.Addr {
