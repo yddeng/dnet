@@ -5,9 +5,9 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/yddeng/dnet"
 	"github.com/yddeng/dnet/dtcp"
-	"github.com/yddeng/dnet/example/cs/codec"
-	"github.com/yddeng/dnet/example/module/message"
-	"github.com/yddeng/dnet/example/pb"
+	"github.com/yddeng/dnet/examples/cs/codec"
+	"github.com/yddeng/dnet/examples/module/message"
+	"github.com/yddeng/dnet/examples/pb"
 	"github.com/yddeng/dutil/buffer"
 	"time"
 )

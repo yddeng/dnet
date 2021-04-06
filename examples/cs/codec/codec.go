@@ -2,8 +2,8 @@ package codec
 
 import (
 	"fmt"
-	"github.com/yddeng/dnet/example/module/message"
-	"github.com/yddeng/dnet/example/module/protocol"
+	"github.com/yddeng/dnet/examples/module/message"
+	"github.com/yddeng/dnet/examples/module/protocol"
 	"github.com/yddeng/dutil/buffer"
 	"io"
 )

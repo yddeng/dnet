@@ -3,8 +3,25 @@ package dnet
 import (
 	"fmt"
 	"github.com/yddeng/dutil/buffer"
-	"io"
 	"reflect"
+)
+
+type (
+	// 编码器
+	Encoder interface {
+		Encode(o interface{}) ([]byte, error)
+	}
+
+	// 解码器
+	Decoder interface {
+		Decode(b []byte) (interface{}, error)
+	}
+
+	//编解码器
+	Codec interface {
+		Encoder
+		Decoder
+	}
 )
 
 // default编解码器
@@ -16,38 +33,21 @@ const (
 	buffSize = 65535   // 缓存容量(与lenSize有关，2字节最大65535）
 )
 
-type DefCodec struct {
+type defCodec struct {
 	readBuf  *buffer.Buffer
 	dataLen  uint16
 	readHead bool
 }
 
-func NewCodec() *DefCodec {
-	return &DefCodec{
+func NewCodec() *defCodec {
+	return &defCodec{
 		readBuf: &buffer.Buffer{},
 	}
 }
 
 //解码
-func (decoder *DefCodec) Decode(reader io.Reader) (interface{}, error) {
-	for {
-		msg, err := decoder.unPack()
-
-		if msg != nil {
-			return msg, nil
-
-		} else if err == nil {
-			_, err1 := decoder.readBuf.ReadFrom(reader)
-			if err1 != nil {
-				return nil, err1
-			}
-		} else {
-			return nil, err
-		}
-	}
-}
-
-func (decoder *DefCodec) unPack() ([]byte, error) {
+func (decoder *defCodec) Decode(b []byte) (interface{}, error) {
+	_, _ = decoder.readBuf.Write(b)
 
 	if !decoder.readHead {
 		if decoder.readBuf.Len() < headSize {
@@ -69,7 +69,7 @@ func (decoder *DefCodec) unPack() ([]byte, error) {
 }
 
 //编码
-func (encoder *DefCodec) Encode(o interface{}) ([]byte, error) {
+func (encoder *defCodec) Encode(o interface{}) ([]byte, error) {
 
 	data, ok := o.([]byte)
 	if !ok {

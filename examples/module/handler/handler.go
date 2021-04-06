@@ -2,7 +2,7 @@ package handler
 
 import (
 	"github.com/yddeng/dnet"
-	"github.com/yddeng/dnet/example/module/message"
+	"github.com/yddeng/dnet/examples/module/message"
 	"reflect"
 )
 
