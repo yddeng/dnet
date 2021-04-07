@@ -119,7 +119,7 @@ func (encoder *Codec) Encode(o interface{}) ([]byte, error) {
 	//data数据
 	buff.WriteBytes(data)
 
-	//fmt.Println("encode", len(data), msgID, msg.GetSerialNo(), data, buff.Peek(), buff.Len())
+	//fmt.Println("encode", len(data), msgID, msg.GetSerialNo(), data, buff.Len())
 
 	return buff.Bytes(), nil
 }

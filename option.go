@@ -19,9 +19,6 @@ type Options struct {
 	// 发送队列容量
 	SendChannelSize int
 
-	// 读buffer大小
-	ReadBufferSize int
-
 	// 读超时
 	ReadTimeout time.Duration
 
@@ -29,16 +26,16 @@ type Options struct {
 	WriteTimeout time.Duration
 
 	// 消息回掉
-	MsgCallback func(message interface{}, err error)
+	MsgCallback func(session Session, message interface{})
 
-	// 编码器
-	Encoder Encoder
-
-	// 解码器
-	Decoder Decoder
+	// 错误回掉
+	ErrorCallback func(session Session, err error)
 
 	// 关闭连接回调
 	CloseCallback func(session Session, reason error)
+
+	// 编解码器
+	Codec Codec
 }
 
 func WithOptions(option *Options) Option {
@@ -53,21 +50,21 @@ func WithBlockSend(bs bool) Option {
 	}
 }
 
-func WithReadBufferSize(size int) Option {
-	return func(opt *Options) {
-		opt.ReadBufferSize = size
-	}
-}
-
 func WithSendChannelSize(size int) Option {
 	return func(opt *Options) {
 		opt.SendChannelSize = size
 	}
 }
 
-func WithMessageCallback(msgCb func(message interface{}, err error)) Option {
+func WithMessageCallback(msgCb func(session Session, message interface{})) Option {
 	return func(opt *Options) {
 		opt.MsgCallback = msgCb
+	}
+}
+
+func WithErrorCallback(errCb func(session Session, err error)) Option {
+	return func(opt *Options) {
+		opt.ErrorCallback = errCb
 	}
 }
 
@@ -80,20 +77,7 @@ func WithTimeout(readTimeout, writeTimeout time.Duration) Option {
 
 func WithCodec(codec Codec) Option {
 	return func(opt *Options) {
-		opt.Encoder = codec
-		opt.Decoder = codec
-	}
-}
-
-func WithEncoder(encoder Encoder) Option {
-	return func(opt *Options) {
-		opt.Encoder = encoder
-	}
-}
-
-func WithDecoder(decoder Decoder) Option {
-	return func(opt *Options) {
-		opt.Decoder = decoder
+		opt.Codec = codec
 	}
 }
 

@@ -3,24 +3,15 @@ package dnet
 import (
 	"fmt"
 	"github.com/yddeng/dutil/buffer"
+	"io"
 	"reflect"
 )
 
 type (
-	// 编码器
-	Encoder interface {
-		Encode(o interface{}) ([]byte, error)
-	}
-
-	// 解码器
-	Decoder interface {
-		Decode(b []byte) (interface{}, error)
-	}
-
 	//编解码器
 	Codec interface {
-		Encoder
-		Decoder
+		Encode(o interface{}) ([]byte, error)
+		Decode(reader io.Reader) (interface{}, error)
 	}
 )
 
@@ -39,15 +30,32 @@ type defCodec struct {
 	readHead bool
 }
 
-func NewCodec() *defCodec {
+func newCodec() *defCodec {
 	return &defCodec{
 		readBuf: &buffer.Buffer{},
 	}
 }
 
 //解码
-func (decoder *defCodec) Decode(b []byte) (interface{}, error) {
-	_, _ = decoder.readBuf.Write(b)
+func (decoder *defCodec) Decode(reader io.Reader) (interface{}, error) {
+	for {
+		msg, err := decoder.unPack()
+
+		if msg != nil {
+			return msg, nil
+
+		} else if err == nil {
+			_, err1 := decoder.readBuf.ReadFrom(reader)
+			if err1 != nil {
+				return nil, err1
+			}
+		} else {
+			return nil, err
+		}
+	}
+}
+
+func (decoder *defCodec) unPack() ([]byte, error) {
 
 	if !decoder.readHead {
 		if decoder.readBuf.Len() < headSize {
@@ -73,12 +81,12 @@ func (encoder *defCodec) Encode(o interface{}) ([]byte, error) {
 
 	data, ok := o.([]byte)
 	if !ok {
-		return nil, fmt.Errorf("encode interface{} is %s, need type []byte", reflect.TypeOf(o))
+		return nil, fmt.Errorf("dnet:Encode interface{} is %s, need type []byte", reflect.TypeOf(o))
 	}
 
 	dataLen := len(data)
 	if dataLen > buffSize-headSize {
-		return nil, fmt.Errorf("encode dataLen is too large,len: %d", dataLen)
+		return nil, fmt.Errorf("dnet:Encode dataLen is too large,len: %d", dataLen)
 	}
 
 	msgLen := dataLen + headSize
