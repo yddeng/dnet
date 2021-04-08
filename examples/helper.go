@@ -1,4 +1,4 @@
-package dnet
+package examples
 
 import (
 	"errors"

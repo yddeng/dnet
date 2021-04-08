@@ -7,14 +7,6 @@ import (
 	"reflect"
 )
 
-type (
-	//编解码器
-	Codec interface {
-		Encode(o interface{}) ([]byte, error)
-		Decode(reader io.Reader) (interface{}, error)
-	}
-)
-
 // default编解码器
 // 消息 -- 格式: 消息头(消息len), 消息体
 
@@ -24,20 +16,20 @@ const (
 	buffSize = 65535   // 缓存容量(与lenSize有关，2字节最大65535）
 )
 
-type defCodec struct {
+type defTCPCodec struct {
 	readBuf  *buffer.Buffer
 	dataLen  uint16
 	readHead bool
 }
 
-func newCodec() *defCodec {
-	return &defCodec{
+func newTCPCodec() *defTCPCodec {
+	return &defTCPCodec{
 		readBuf: &buffer.Buffer{},
 	}
 }
 
 //解码
-func (decoder *defCodec) Decode(reader io.Reader) (interface{}, error) {
+func (decoder *defTCPCodec) Decode(reader io.Reader) (interface{}, error) {
 	for {
 		msg, err := decoder.unPack()
 
@@ -55,7 +47,7 @@ func (decoder *defCodec) Decode(reader io.Reader) (interface{}, error) {
 	}
 }
 
-func (decoder *defCodec) unPack() ([]byte, error) {
+func (decoder *defTCPCodec) unPack() ([]byte, error) {
 
 	if !decoder.readHead {
 		if decoder.readBuf.Len() < headSize {
@@ -77,7 +69,7 @@ func (decoder *defCodec) unPack() ([]byte, error) {
 }
 
 //编码
-func (encoder *defCodec) Encode(o interface{}) ([]byte, error) {
+func (encoder *defTCPCodec) Encode(o interface{}) ([]byte, error) {
 
 	data, ok := o.([]byte)
 	if !ok {

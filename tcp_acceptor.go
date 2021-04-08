@@ -14,32 +14,34 @@ type TCPAcceptor struct {
 	started  int32
 }
 
-func NewTCPAcceptor(addr string, options ...Option) (*TCPAcceptor, error) {
-	tcpAddr, err := net.ResolveTCPAddr("tcp", addr)
+// NewTCPAcceptor returns a new instance of TCPAcceptor
+func NewTCPAcceptor(address string, options ...Option) (*TCPAcceptor, error) {
+	tcpAddr, err := net.ResolveTCPAddr("tcp", address)
 	if err != nil {
 		return nil, err
 	}
 	return &TCPAcceptor{tcpAddr: tcpAddr, options: options}, nil
 }
 
-func (l *TCPAcceptor) Listen(callback newSessionCallback) error {
+// Listen listens and serve in the specified addr
+func (this *TCPAcceptor) Listen(callback newSessionCallback) error {
 	if callback == nil {
 		return errors.New("dnet:Listen newSessionCallback is nil. ")
 	}
 
-	if !atomic.CompareAndSwapInt32(&l.started, 0, 1) {
+	if !atomic.CompareAndSwapInt32(&this.started, 0, 1) {
 		return errors.New("dnet:Listen acceptor is already started. ")
 	}
 
-	listener, err := net.ListenTCP("tcp", l.tcpAddr)
+	listener, err := net.ListenTCP("tcp", this.tcpAddr)
 	if err != nil {
 		return err
 	}
-	l.listener = listener
-	defer l.Stop()
+	this.listener = listener
+	defer this.Stop()
 
 	for {
-		conn, err := l.listener.Accept()
+		conn, err := this.listener.Accept()
 		if err != nil {
 			if ne, ok := err.(net.Error); ok && ne.Temporary() {
 				time.Sleep(time.Millisecond * 5)
@@ -48,7 +50,7 @@ func (l *TCPAcceptor) Listen(callback newSessionCallback) error {
 				return err
 			}
 		}
-		tcpConn, err := NewTCPConn(conn.(*net.TCPConn), l.options...)
+		tcpConn, err := NewTCPSession(conn.(*net.TCPConn), this.options...)
 		if err != nil {
 			return err
 		}
@@ -57,28 +59,30 @@ func (l *TCPAcceptor) Listen(callback newSessionCallback) error {
 
 }
 
-func (l *TCPAcceptor) Addr() net.Addr {
-	return l.listener.Addr()
+// Addr returns the addr the acceptor will listen on
+func (this *TCPAcceptor) Addr() net.Addr {
+	return this.listener.Addr()
 }
 
-func (l *TCPAcceptor) Stop() {
-	if atomic.CompareAndSwapInt32(&l.started, 1, 0) {
-		_ = l.listener.Close()
+// Stop stops the acceptor
+func (this *TCPAcceptor) Stop() {
+	if atomic.CompareAndSwapInt32(&this.started, 1, 0) {
+		_ = this.listener.Close()
 	}
 
 }
 
-func DialTCP(addr string, timeout time.Duration, options ...Option) (Session, error) {
-	tcpAddr, err := net.ResolveTCPAddr("tcp", addr)
+func DialTCP(address string, timeout time.Duration, options ...Option) (Session, error) {
+	tcpAddr, err := net.ResolveTCPAddr("tcp", address)
 	if err != nil {
 		return nil, err
 	}
 
 	dialer := &net.Dialer{Timeout: timeout}
-	conn, err := dialer.Dial(tcpAddr.Network(), addr)
+	conn, err := dialer.Dial(tcpAddr.Network(), address)
 	if err != nil {
 		return nil, err
 	}
 
-	return NewTCPConn(conn.(*net.TCPConn), options...)
+	return NewTCPSession(conn.(*net.TCPConn), options...)
 }

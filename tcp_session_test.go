@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-func TestTCPSocketWithCodec(t *testing.T) {
+func TestNewTCPSession(t *testing.T) {
 	l, _ := NewTCPAcceptor(":4522",
 		WithCloseCallback(func(session Session, reason error) {
 			fmt.Println(session.RemoteAddr(), reason, "ss close")
@@ -45,18 +45,19 @@ func TestTCPSocketWithCodec(t *testing.T) {
 	}
 
 	fmt.Println(session.Send([]byte{1, 2, 3, 4}))
-	fmt.Println(session.Send([]byte{1, 2, 3, 4}))
-	fmt.Println(session.Send([]byte{1, 2, 3, 4}))
-	fmt.Println(session.Send(123))
+	fmt.Println(session.Send([]byte{1, 2, 3, 4, 5}))
+	fmt.Println(session.Send([]byte{1, 2, 3, 4, 5, 6}))
+	//fmt.Println(session.Send(123))
 
 	time.Sleep(time.Second)
 	fmt.Println(" ------- close ----------")
 	session.Close(nil)
+	fmt.Println(session.Send([]byte{1, 2, 3, 4}))
 	time.Sleep(time.Second)
 
 }
 
-func TestNewTCPConn(t *testing.T) {
+func TestTCP(t *testing.T) {
 
 	l, _ := net.Listen("tcp", ":4522")
 	go func() {
