@@ -10,7 +10,7 @@ import (
 type session struct {
 	opts *Options
 
-	conn    net.Conn
+	conn    NetConn
 	context atomic.Value //interface{} // 用户数据
 
 	sendOnce      sync.Once
@@ -26,7 +26,7 @@ type message struct {
 	data interface{}
 }
 
-func newSession(conn net.Conn, options *Options) *session {
+func newSession(conn NetConn, options *Options) *session {
 	if options.SendChannelSize <= 0 {
 		options.SendChannelSize = defSendChannelSize
 	}

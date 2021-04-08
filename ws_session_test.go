@@ -7,28 +7,39 @@ import (
 )
 
 func TestNewWSSession(t *testing.T) {
-	l, _ := NewWSAcceptor(":4522",
-		WithCloseCallback(func(session Session, reason error) {
-			fmt.Println(session.RemoteAddr(), reason, "ss close")
-		}),
-		WithMessageCallback(func(session Session, message interface{}) {
-			fmt.Println("ss", message)
-		}),
-		WithErrorCallback(func(session Session, err error) {
-			fmt.Println("ss error", err)
-		}))
-	defer l.Stop()
-
 	go func() {
-		_ = l.Listen(func(session Session) {
+		ServeWS(":4522", HandleFunc(func(conn NetConn) {
+			fmt.Println("new Conn", conn.RemoteAddr())
+			session, err := NewWSSession(conn,
+				WithCloseCallback(func(session Session, reason error) {
+					fmt.Println(session.RemoteAddr(), reason, "ss close")
+				}),
+				WithMessageCallback(func(session Session, message interface{}) {
+					fmt.Println("ss", message)
+				}),
+				WithErrorCallback(func(session Session, err error) {
+					fmt.Println("ss error", err)
+				}))
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
 			time.Sleep(time.Millisecond * 200)
 			fmt.Println(session.Send([]byte{4, 3, 2, 1}))
 			fmt.Println(session.Send([]byte{4, 3, 2, 1}))
-		})
+		}))
 	}()
 
+	//http.HandleFunc()
+
 	time.Sleep(time.Millisecond * 100)
-	session, err := DialWS("127.0.0.1:4522", 0,
+	wsConn, err := DialWS("127.0.0.1:4522", 0)
+	if err != nil {
+		fmt.Println("dialWs", err)
+		return
+	}
+
+	session, err := NewWSSession(wsConn,
 		WithCloseCallback(func(session Session, reason error) {
 			fmt.Println(session.RemoteAddr(), reason, "cc close")
 		}),
@@ -39,7 +50,7 @@ func TestNewWSSession(t *testing.T) {
 			fmt.Println("cc error", err)
 		}))
 	if err != nil {
-		fmt.Println("dialWs", err)
+		fmt.Println("NewWSSession", err)
 		return
 	}
 

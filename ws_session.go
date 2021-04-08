@@ -1,16 +1,11 @@
 package dnet
 
-import (
-	"github.com/gorilla/websocket"
-)
-
 type WSSession struct {
 	*session
-	conn *WSConn
 }
 
 // NewWSSession return an initialized *WSSession
-func NewWSSession(conn *websocket.Conn, options ...Option) (*WSSession, error) {
+func NewWSSession(conn NetConn, options ...Option) (*WSSession, error) {
 	op := loadOptions(options...)
 	if op.MsgCallback == nil {
 		return nil, ErrNilMsgCallBack
@@ -20,12 +15,8 @@ func NewWSSession(conn *websocket.Conn, options ...Option) (*WSSession, error) {
 		op.Codec = newWsCodec()
 	}
 
-	// WSConn
-	wsConn := NewWSConn(conn)
-
 	session := &WSSession{
-		conn:    wsConn,
-		session: newSession(wsConn, op),
+		session: newSession(conn, op),
 	}
 
 	return session, nil

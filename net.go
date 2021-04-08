@@ -46,18 +46,46 @@ type Session interface {
 	IsClosed() bool
 }
 
-// callback of new session
-type newSessionCallback func(session Session)
+// NetConn
+type NetConn interface {
+	net.Conn
+}
+
+// AcceptorHandle type interface
+type AcceptorHandle interface {
+	// handler to invokes
+	OnConnection(conn NetConn)
+}
+
+type AcceptorHandlerFunc func(conn NetConn)
+
+func (handler AcceptorHandlerFunc) OnConnection(conn NetConn) {
+	// handler to invokes
+	handler(conn)
+}
+
+// HandleFunc returns AcceptorHandlerFunc with the handler function.
+func HandleFunc(handler func(conn NetConn)) AcceptorHandlerFunc {
+	return handler
+}
 
 // Acceptor type interface
 type Acceptor interface {
-	Listen(conn newSessionCallback) error
+	// Serve listen and serve
+	Serve(handler AcceptorHandle) error
+
+	// Stop stop the acceptor
 	Stop()
+
+	// Addr returns address of the listener
 	Addr() net.Addr
 }
 
-//编解码器
+// Codec
 type Codec interface {
+	// Encode
 	Encode(o interface{}) ([]byte, error)
+
+	// Decode
 	Decode(reader io.Reader) (interface{}, error)
 }

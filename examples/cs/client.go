@@ -12,7 +12,13 @@ import (
 
 func main() {
 	addr := "localhost:1234"
-	session, err := dnet.DialTCP(addr, 0,
+	conn, err := dnet.DialTCP(addr, 0)
+	if err != nil {
+		fmt.Println("dialTcp", err)
+		return
+	}
+
+	session, err := dnet.NewTCPSession(conn,
 		dnet.WithCodec(codec.NewCodec()),
 		dnet.WithErrorCallback(func(session dnet.Session, err error) {
 			fmt.Println("onError", err)
@@ -24,7 +30,7 @@ func main() {
 			fmt.Println("onClose", reason)
 		}))
 	if err != nil {
-		fmt.Println(err)
+		fmt.Println("newTCPSession", err)
 		return
 	}
 

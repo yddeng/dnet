@@ -12,22 +12,17 @@ import (
 )
 
 type WSAcceptor struct {
-	tcpAddr  *net.TCPAddr
+	address  string
 	handler  *wsHandler
-	listener *net.TCPListener
+	listener net.Listener
 	started  int32
 }
 
 // NewWSAcceptor returns a new instance of WSAcceptor
-func NewWSAcceptor(address string, options ...Option) (*WSAcceptor, error) {
-	tcpAddr, err := net.ResolveTCPAddr("tcp", address)
-	if err != nil {
-		return nil, err
-	}
+func NewWSAcceptor(address string) *WSAcceptor {
 	return &WSAcceptor{
-		tcpAddr: tcpAddr,
+		address: address,
 		handler: &wsHandler{
-			options: options,
 			upgrader: &websocket.Upgrader{
 				CheckOrigin: func(r *http.Request) bool {
 					// allow all connections by default
@@ -35,13 +30,18 @@ func NewWSAcceptor(address string, options ...Option) (*WSAcceptor, error) {
 				},
 			},
 		},
-	}, nil
+	}
+}
+
+// ServeWS listen and serve ws address with handler
+func ServeWS(address string, handler AcceptorHandle) (*WSAcceptor, error) {
+	l := NewWSAcceptor(address)
+	return l, l.Serve(handler)
 }
 
 type wsHandler struct {
 	upgrader *websocket.Upgrader
-	options  []Option
-	callback newSessionCallback
+	handler  AcceptorHandle
 }
 
 func (h *wsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -50,34 +50,29 @@ func (h *wsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		log.Printf("dnet:ServeHTTP WSSession Upgrade failed, %s\n", err.Error())
 		return
 	}
-	wsSession, err := NewWSSession(c, h.options...)
-	if err != nil {
-		log.Printf("dnet:ServeHTTP NewWSSession failed, %s\n", err.Error())
-		return
-	}
-	h.callback(wsSession)
+	h.handler.OnConnection(NewWSConn(c))
 }
 
-// Listen listens and serve in the specified addr
-func (this *WSAcceptor) Listen(callback newSessionCallback) error {
-	if callback == nil {
-		return errors.New("dnet:WSAcceptor Listen newSessionCallback is nil. ")
+// Serve listens and serve in the specified addr
+func (this *WSAcceptor) Serve(handler AcceptorHandle) error {
+	if handler == nil {
+		return errors.New("dnet:Serve handler is nil. ")
 	}
-	this.handler.callback = callback
+	this.handler.handler = handler
 
 	if !atomic.CompareAndSwapInt32(&this.started, 0, 1) {
-		return errors.New("dnet:WSAcceptor Listen acceptor is already started. ")
+		return errors.New("dnet:Serve acceptor is already started. ")
 	}
 
-	listener, err := net.ListenTCP("tcp", this.tcpAddr)
+	listener, err := net.Listen("tcp", this.address)
 	if err != nil {
-		return errors.New("dnet:WSAcceptor ListenTCP failed, " + err.Error())
+		return errors.New("dnet:Serve net.Listen failed, " + err.Error())
 	}
 	this.listener = listener
 	defer this.Stop()
 
 	if err = http.Serve(this.listener, this.handler); err != nil {
-		log.Printf("dnet:WSAcceptor Serve failed, %s\n", err.Error())
+		log.Printf("dnet:Serve failed, %s\n", err.Error())
 	}
 
 	return nil
@@ -95,12 +90,12 @@ func (this *WSAcceptor) Stop() {
 	}
 }
 
-func DialWS(host string, timeout time.Duration, options ...Option) (Session, error) {
+func DialWS(host string, timeout time.Duration) (NetConn, error) {
 	u := url.URL{Scheme: "ws", Host: host}
 	websocket.DefaultDialer.HandshakeTimeout = timeout
 	conn, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
 	if err != nil {
 		return nil, err
 	}
-	return NewWSSession(conn, options...)
+	return NewWSConn(conn), nil
 }

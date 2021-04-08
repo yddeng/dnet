@@ -3,13 +3,15 @@ package dnet
 import (
 	"fmt"
 	"net"
-	"strings"
 	"testing"
 	"time"
 )
 
-func TestNewTCPSession(t *testing.T) {
-	l, _ := NewTCPAcceptor(":4522",
+type testTCPHandler struct{}
+
+func (this *testTCPHandler) OnConnection(conn NetConn) {
+	fmt.Println("new Conn", conn.RemoteAddr())
+	session, err := NewTCPSession(conn,
 		WithCloseCallback(func(session Session, reason error) {
 			fmt.Println(session.RemoteAddr(), reason, "ss close")
 		}),
@@ -19,18 +21,29 @@ func TestNewTCPSession(t *testing.T) {
 		WithErrorCallback(func(session Session, err error) {
 			fmt.Println("ss error", err)
 		}))
-	defer l.Stop()
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	time.Sleep(time.Millisecond * 200)
+	fmt.Println(session.Send([]byte{4, 3, 2, 1}))
+	fmt.Println(session.Send([]byte{4, 3, 2, 1}))
+}
 
+func TestNewTCPSession(t *testing.T) {
 	go func() {
-		_ = l.Listen(func(session Session) {
-			time.Sleep(time.Millisecond * 200)
-			fmt.Println(session.Send([]byte{4, 3, 2, 1}))
-			fmt.Println(session.Send([]byte{4, 3, 2, 1}))
-		})
+		ServeTCP(":4522", &testTCPHandler{})
 	}()
 
 	time.Sleep(time.Millisecond * 100)
-	session, err := DialTCP("127.0.0.1:4522", 0,
+
+	conn, err := DialTCP("127.0.0.1:4522", 0)
+	if err != nil {
+		fmt.Println("dialTcp", err)
+		return
+	}
+
+	session, err := NewTCPSession(conn,
 		WithCloseCallback(func(session Session, reason error) {
 			fmt.Println(session.RemoteAddr(), reason, "cc close")
 		}),
@@ -41,11 +54,9 @@ func TestNewTCPSession(t *testing.T) {
 			fmt.Println("cc error", err)
 		}))
 	if err != nil {
-		fmt.Println("dialTcp", err)
+		fmt.Println("newTCPSession", err)
 		return
 	}
-
-	strings.Contains()
 
 	fmt.Println(session.Send([]byte{1, 2, 3, 4}))
 	fmt.Println(session.Send([]byte{1, 2, 3, 4, 5}))
@@ -58,6 +69,29 @@ func TestNewTCPSession(t *testing.T) {
 	fmt.Println(session.Send([]byte{1, 2, 3, 4}))
 	time.Sleep(time.Second)
 
+}
+
+type testTCPHandler2 struct{}
+
+func (this *testTCPHandler2) OnConnection(conn NetConn) {
+	fmt.Println("new Conn", conn.RemoteAddr())
+
+	go func() {
+		buf := make([]byte, 1024)
+		for {
+			if n, err := conn.Read(buf); err != nil {
+				fmt.Println(11, err)
+				break
+			} else {
+				fmt.Println(buf[:n])
+			}
+		}
+	}()
+
+	go func() {
+		time.Sleep(time.Millisecond * 500)
+		conn.Write([]byte{4, 3, 2, 1})
+	}()
 }
 
 func TestTCP(t *testing.T) {

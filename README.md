@@ -140,35 +140,89 @@ type Codec interface {
 
 `tcp`默认的编码器，实现数据的沾包、分包。
 
+### acceptor
+
+```
+type Acceptor interface {
+	// Serve listen and serve
+	Serve(handler AcceptorHandle) error
+	// Stop stop the acceptor
+	Stop()
+	// Addr returns address of the listener
+	Addr() net.Addr
+}
+```
+
+`Serve` 启动服务，需要传入一个`AcceptorHandle`. 
+
+```
+// AcceptorHandle type interface
+type AcceptorHandle interface {
+	// handler to invokes
+	OnConnection(conn NetConn)
+}
+
+type AcceptorHandlerFunc func(conn NetConn)
+
+func (handler AcceptorHandlerFunc) OnConnection(conn NetConn) {
+	// handler to invokes
+	handler(conn)
+}
+
+// HandleFunc returns AcceptorHandlerFunc with the handler function.
+func HandleFunc(handler func(conn NetConn)) AcceptorHandlerFunc {
+	return handler
+}
+```
+
+可通过`dnet`下`HandleFunc`将一个`func(conn NetConn)`转成`AcceptorHandle`。调用方式如下：
+
+```
+ServeTCP(":4522", HandleFunc(func(conn NetConn) {
+    // do something
+}))
+```
+
 #### example
 
 ```
-    // server  
-    l, _ := NewTCPAcceptor(":4522",
-        // 关闭连接回调
+type testTCPHandler struct{}
+
+func (this *testTCPHandler) OnConnection(conn NetConn) {
+	fmt.Println("new Conn", conn.RemoteAddr())
+	session, err := NewTCPSession(conn,
 		WithCloseCallback(func(session Session, reason error) {
 			fmt.Println(session.RemoteAddr(), reason, "ss close")
 		}),
-        // 消息回调
 		WithMessageCallback(func(session Session, message interface{}) {
 			fmt.Println("ss", message)
 		}),
-        // 错误回调
 		WithErrorCallback(func(session Session, err error) {
 			fmt.Println("ss error", err)
 		}))
-	defer l.Stop()
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	time.Sleep(time.Millisecond * 200)
+	fmt.Println(session.Send([]byte{4, 3, 2, 1}))
+	fmt.Println(session.Send([]byte{4, 3, 2, 1}))
+}
 
+func TestNewTCPSession(t *testing.T) {
 	go func() {
-		_ = l.Listen(func(session Session) {
-			time.Sleep(time.Millisecond * 200)
-			fmt.Println(session.Send([]byte{4, 3, 2, 1}))
-			fmt.Println(session.Send([]byte{4, 3, 2, 1}))
-		})
+		ServeTCP(":4522", &testTCPHandler{})
 	}()
 
-    // client
-    session, err := DialTCP("127.0.0.1:4522", 0,
+	time.Sleep(time.Millisecond * 100)
+
+	conn, err := DialTCP("127.0.0.1:4522", 0)
+	if err != nil {
+		fmt.Println("dialTcp", err)
+		return
+	}
+
+	session, err := NewTCPSession(conn,
 		WithCloseCallback(func(session Session, reason error) {
 			fmt.Println(session.RemoteAddr(), reason, "cc close")
 		}),
@@ -179,7 +233,7 @@ type Codec interface {
 			fmt.Println("cc error", err)
 		}))
 	if err != nil {
-		fmt.Println("dialTcp", err)
+		fmt.Println("newTCPSession", err)
 		return
 	}
 
@@ -194,5 +248,8 @@ type Codec interface {
 	fmt.Println(session.Send([]byte{1, 2, 3, 4}))
 	time.Sleep(time.Second)
 
+}
 ```
+
+echo 的示例项目 examples/cs 
 

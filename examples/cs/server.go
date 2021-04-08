@@ -26,31 +26,22 @@ func main() {
 	gHandler.RegisterCallBack(&pb.EchoToS{}, echoToC)
 
 	addr := "localhost:1234"
-	l, err := dnet.NewTCPAcceptor(addr,
-		//dnet.WithTimeout(time.Second*5, 0), // 超时
-		dnet.WithCodec(codec.NewCodec()),
-		dnet.WithErrorCallback(func(session dnet.Session, err error) {
-			fmt.Println("onError", err)
-		}),
-		dnet.WithMessageCallback(func(session dnet.Session, data interface{}) {
-			gHandler.Dispatch(session, data.(*message.Message))
-		}),
-		dnet.WithCloseCallback(func(session dnet.Session, reason error) {
-			fmt.Println("onClose", reason)
-		}))
-	if err != nil {
-		fmt.Println(1, err)
-		return
+	fmt.Println("serve tcp", addr)
+	if _, err := dnet.ServeTCP(addr, dnet.HandleFunc(func(conn dnet.NetConn) {
+		fmt.Println("new client", conn.RemoteAddr().String())
+		_, _ = dnet.NewTCPSession(conn,
+			dnet.WithTimeout(time.Second*5, 0), // 超时
+			dnet.WithCodec(codec.NewCodec()),
+			dnet.WithErrorCallback(func(session dnet.Session, err error) {
+				fmt.Println("onError", err)
+			}),
+			dnet.WithMessageCallback(func(session dnet.Session, data interface{}) {
+				gHandler.Dispatch(session, data.(*message.Message))
+			}),
+			dnet.WithCloseCallback(func(session dnet.Session, reason error) {
+				fmt.Println("onClose", reason)
+			}))
+	})); err != nil {
+		fmt.Println(err)
 	}
-
-	go func() {
-		fmt.Println("server start on :", addr)
-		if err = l.Listen(func(session dnet.Session) {
-			fmt.Println("new client", session.RemoteAddr().String())
-		}); err != nil {
-			fmt.Println(2, err)
-		}
-	}()
-
-	select {}
 }

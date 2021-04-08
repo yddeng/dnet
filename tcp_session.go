@@ -1,16 +1,11 @@
 package dnet
 
-import (
-	"net"
-)
-
 type TCPSession struct {
 	*session
-	conn *net.TCPConn
 }
 
 // NewTCPSession return an initialized *TCPSession
-func NewTCPSession(conn *net.TCPConn, options ...Option) (*TCPSession, error) {
+func NewTCPSession(conn NetConn, options ...Option) (*TCPSession, error) {
 	op := loadOptions(options...)
 	if op.MsgCallback == nil {
 		return nil, ErrNilMsgCallBack
@@ -21,7 +16,6 @@ func NewTCPSession(conn *net.TCPConn, options ...Option) (*TCPSession, error) {
 	}
 
 	tcpConn := &TCPSession{
-		conn:    conn,
 		session: newSession(conn, op),
 	}
 	return tcpConn, nil
