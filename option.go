@@ -4,6 +4,7 @@ import "time"
 
 type Option func(opt *Options)
 
+// loadOptions returns an initialized *Options with options
 func loadOptions(options ...Option) *Options {
 	opts := new(Options)
 	for _, option := range options {
@@ -12,62 +13,71 @@ func loadOptions(options ...Option) *Options {
 	return opts
 }
 
+// Options contains all options which will be applied when instantiating a session.
 type Options struct {
-	// 当写入队列满时，如果 BlockSend 为真，将阻塞。为假，返回队列满错误码. 默认为假
+	// when the send channel is full, BlockSend will block if it is true.
+	// or it return queue full error code, if BlockSend is false.
+	// it default is false
 	BlockSend bool
 
-	// 发送队列容量
+	// capacity of the send channel. default net.defSendChannelSize
 	SendChannelSize int
 
-	// 读超时
+	// the deadline for read
 	ReadTimeout time.Duration
 
-	// 写超时
+	// the deadline for write
 	WriteTimeout time.Duration
 
-	// 消息回掉
+	// session will call the MsgCallback,if it has a message
 	MsgCallback func(session Session, message interface{})
 
-	// 错误回掉
+	// session will call the ErrorCallback,if it has a error
 	ErrorCallback func(session Session, err error)
 
-	// 关闭连接回调
+	// session will call the CloseCallback,if it is closed
 	CloseCallback func(session Session, reason error)
 
-	// 编解码器
+	// encoder and decoder
 	Codec Codec
 }
 
+// WithOptions accepts the whole options config.
 func WithOptions(option *Options) Option {
 	return func(opt *Options) {
 		opt = option
 	}
 }
 
+// WithBlockSend indicates whether it should block when the send channel full.
 func WithBlockSend(bs bool) Option {
 	return func(opt *Options) {
 		opt.BlockSend = bs
 	}
 }
 
+// WithSendChannelSize sets capacity of the send channel .
 func WithSendChannelSize(size int) Option {
 	return func(opt *Options) {
 		opt.SendChannelSize = size
 	}
 }
 
+// WithMessageCallback sets message callback.
 func WithMessageCallback(msgCb func(session Session, message interface{})) Option {
 	return func(opt *Options) {
 		opt.MsgCallback = msgCb
 	}
 }
 
+// WithErrorCallback sets error callback.
 func WithErrorCallback(errCb func(session Session, err error)) Option {
 	return func(opt *Options) {
 		opt.ErrorCallback = errCb
 	}
 }
 
+// WithTimeout sets the deadline of read/write.
 func WithTimeout(readTimeout, writeTimeout time.Duration) Option {
 	return func(opt *Options) {
 		opt.ReadTimeout = readTimeout
@@ -75,12 +85,14 @@ func WithTimeout(readTimeout, writeTimeout time.Duration) Option {
 	}
 }
 
+// WithCodec sets codec.
 func WithCodec(codec Codec) Option {
 	return func(opt *Options) {
 		opt.Codec = codec
 	}
 }
 
+// WithCloseCallback sets close callback.
 func WithCloseCallback(closeCallback func(session Session, reason error)) Option {
 	return func(opt *Options) {
 		opt.CloseCallback = closeCallback

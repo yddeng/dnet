@@ -16,43 +16,33 @@ var (
 	ErrReadTimeout = errors.New("dnet: read timeout. ")
 )
 
-var (
-	ErrRPCTimeout = errors.New("dnet: rpc timeout")
-)
-
 const (
-	sendBufChanSize = 1024
+	defSendChannelSize = 1024
 )
 
 type Session interface {
-	// conn
+	// connection
 	NetConn() interface{}
 
-	// 获取远端地址
+	// RemoteAddr returns the remote network address.
 	RemoteAddr() net.Addr
 
-	// 获取远端地址
+	// LocalAddr returns the local network address.
 	LocalAddr() net.Addr
 
-	/*
-	 * 发送
-	 * 有编码器，任何数据都将经过编码器编码后发送
-	 * 没有编码器，仅能发送 []byte 类型数据。
-	 */
+	// Send data will be encoded by the encoder and sent
 	Send(o interface{}) error
 
-	// 给session绑定用户数据
+	// SetContext binding session data
 	SetContext(ctx interface{})
 
-	// 获取用户数据
+	// Context returns binding session data
 	Context() interface{}
 
-	/*
-	 先关闭读，待数据发送完毕再关闭连接
-	*/
+	// Close closes the session.
 	Close(reason error)
 
-	// 是否已经关闭
+	// IsClosed returns has it been closed
 	IsClosed() bool
 }
 

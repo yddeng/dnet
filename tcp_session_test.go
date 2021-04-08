@@ -3,6 +3,7 @@ package dnet
 import (
 	"fmt"
 	"net"
+	"strings"
 	"testing"
 	"time"
 )
@@ -43,6 +44,8 @@ func TestNewTCPSession(t *testing.T) {
 		fmt.Println("dialTcp", err)
 		return
 	}
+
+	strings.Contains()
 
 	fmt.Println(session.Send([]byte{1, 2, 3, 4}))
 	fmt.Println(session.Send([]byte{1, 2, 3, 4, 5}))

@@ -72,6 +72,7 @@ func (this *TCPAcceptor) Stop() {
 
 }
 
+// DialTCP
 func DialTCP(address string, timeout time.Duration, options ...Option) (Session, error) {
 	tcpAddr, err := net.ResolveTCPAddr("tcp", address)
 	if err != nil {

@@ -3,16 +3,15 @@ package drpc
 import (
 	"errors"
 	"fmt"
-	"github.com/yddeng/dnet"
 	"github.com/yddeng/dutil/timer"
 	"sync"
 	"sync/atomic"
 	"time"
 )
 
-const (
-	DefaultRPCTimeout = 8 * time.Second
-)
+const DefaultRPCTimeout = 8 * time.Second
+
+var ErrRPCTimeout = errors.New("drpc: rpc timeout")
 
 type Call struct {
 	reqNo    uint64
@@ -52,7 +51,7 @@ func (client *Client) Call(channel RPCChannel, method string, data interface{}, 
 	c.timer = client.timerMgr.OnceTimer(timeout, nil, func(ctx interface{}) {
 		if _, ok := client.pending.Load(c.reqNo); ok {
 			client.pending.Delete(c.reqNo)
-			c.callback(nil, dnet.ErrRPCTimeout)
+			c.callback(nil, ErrRPCTimeout)
 		}
 		c.timer = nil
 	})

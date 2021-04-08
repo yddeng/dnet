@@ -28,7 +28,7 @@ type message struct {
 
 func newSession(conn net.Conn, options *Options) *session {
 	if options.SendChannelSize <= 0 {
-		options.SendChannelSize = sendBufChanSize
+		options.SendChannelSize = defSendChannelSize
 	}
 
 	session := &session{
