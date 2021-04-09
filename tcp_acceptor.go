@@ -19,9 +19,8 @@ func NewTCPAcceptor(address string) *TCPAcceptor {
 }
 
 // ServeTCP listen and serve tcp address with handler
-func ServeTCP(address string, handler AcceptorHandle) (*TCPAcceptor, error) {
-	l := NewTCPAcceptor(address)
-	return l, l.Serve(handler)
+func ServeTCP(address string, handler AcceptorHandle) error {
+	return NewTCPAcceptor(address).Serve(handler)
 }
 
 // Serve listens and serve in the specified addr

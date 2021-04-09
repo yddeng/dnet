@@ -34,9 +34,8 @@ func NewWSAcceptor(address string) *WSAcceptor {
 }
 
 // ServeWS listen and serve ws address with handler
-func ServeWS(address string, handler AcceptorHandle) (*WSAcceptor, error) {
-	l := NewWSAcceptor(address)
-	return l, l.Serve(handler)
+func ServeWS(address string, handler AcceptorHandle) error {
+	return NewWSAcceptor(address).Serve(handler)
 }
 
 type wsHandler struct {
