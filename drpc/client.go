@@ -1,9 +1,8 @@
 package drpc
 
 import (
-	"errors"
 	"fmt"
-	"github.com/yddeng/dutil/timer"
+	"github.com/yddeng/timer"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -11,26 +10,44 @@ import (
 
 const DefaultRPCTimeout = 8 * time.Second
 
-var ErrRPCTimeout = errors.New("drpc: rpc timeout")
+var ErrRPCTimeout = fmt.Errorf("drpc: rpc timeout. ")
 
+// Call represents an active RPC.
 type Call struct {
 	reqNo    uint64
 	callback func(interface{}, error) // response
 	timer    timer.Timer
 }
 
+// Client represents an RPC Client.
+// There may be multiple outstanding Calls associated
+// with a single Client, and a Client may be used by
+// multiple goroutines simultaneously.
 type Client struct {
-	reqNo    uint64         // 请求号
-	timerMgr timer.TimerMgr // 定时器
+	reqNo    uint64         // serial number
+	timerMgr timer.TimerMgr // timer
 	pending  sync.Map       // map[uint64]*Call
 }
 
-/*
- asynchronous 异步请求
-*/
+// Call invokes the function asynchronously.
+//
+// waits for it to complete, and returns its error status.
+//
+// func SyncCall() (ret interface{}, err error) {
+// 	 waitC := make(chan struct{})
+//   f := func(ret_ interface{}, err_ error) {
+// 		ret = ret_
+// 		err = err_
+// 		close(waitC)
+// 	 }
+// 	 Call(..., f)
+// 	 <-waitC
+// 	 return
+// }
+//
 func (client *Client) Call(channel RPCChannel, method string, data interface{}, timeout time.Duration, callback func(interface{}, error)) error {
 	if callback == nil {
-		return errors.New("drpc: AsyncCall callback == nil")
+		return fmt.Errorf("drpc: AsyncCall callback == nil")
 	}
 
 	req := &Request{
@@ -48,7 +65,7 @@ func (client *Client) Call(channel RPCChannel, method string, data interface{}, 
 		callback: callback,
 	}
 
-	c.timer = client.timerMgr.OnceTimer(timeout, nil, func(ctx interface{}) {
+	c.timer = client.timerMgr.OnceTimer(timeout, func() {
 		if _, ok := client.pending.Load(c.reqNo); ok {
 			client.pending.Delete(c.reqNo)
 			c.callback(nil, ErrRPCTimeout)
@@ -60,6 +77,7 @@ func (client *Client) Call(channel RPCChannel, method string, data interface{}, 
 	return nil
 }
 
+// OnRPCResponse
 func (client *Client) OnRPCResponse(resp *Response) error {
 	v, ok := client.pending.Load(resp.SeqNo)
 	if !ok {
@@ -77,15 +95,16 @@ func (client *Client) OnRPCResponse(resp *Response) error {
 
 }
 
-// 默认低精度定时器
+// NewClient returns a new Client to handle requests to the
+// set of services at the other end of the connection.
+// It adds a timer manager to
 func NewClient() *Client {
-	client := &Client{
-		// 低精度定时器，精度50ms，长度20。误差 50ms
+	return &Client{
 		timerMgr: timer.NewTimeWheelMgr(time.Millisecond*50, 20),
 	}
-	return client
 }
 
+// NewClientWithTimerMgr is like NewClient but uses the specified timerMgr.
 func NewClientWithTimerMgr(timerMgr timer.TimerMgr) *Client {
 	return &Client{
 		timerMgr: timerMgr,

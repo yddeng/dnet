@@ -1,39 +1,44 @@
-package main
+package drpc
 
 import (
 	"fmt"
-	"github.com/golang/protobuf/proto"
 	"github.com/yddeng/dnet"
-	"github.com/yddeng/dnet/drpc"
-	"github.com/yddeng/dnet/examples/pb"
 	"github.com/yddeng/dnet/examples/rpc/codec"
+	"testing"
 	"time"
 )
 
-func echo(replyer *drpc.Replier, arg interface{}) {
-	req := arg.(*pb.EchoToS)
-	fmt.Println("echo", req.GetMsg())
+type EchoToS struct {
+	Msg string `json:"msg,omitempty"`
+}
 
-	replyer.Reply(&pb.EchoToC{Msg: proto.String("ok")})
+type EchoToC struct {
+	Msg string `json:"msg,omitempty"`
+}
+
+func echo(replyer *Replier, arg interface{}) {
+	req := arg.(*EchoToS)
+	fmt.Println("echo", req.Msg)
+	replyer.Reply(&EchoToC{Msg: req.Msg})
 }
 
 type channel struct {
 	session dnet.Session
 }
 
-func (this *channel) SendRequest(req *drpc.Request) error {
+func (this *channel) SendRequest(req *Request) error {
 	return this.session.Send(req)
 }
 
-func (this *channel) SendResponse(resp *drpc.Response) error {
+func (this *channel) SendResponse(resp *Response) error {
 	return this.session.Send(resp)
 }
 
-func main() {
+func TestNewServer(t *testing.T) {
 
-	rpcServer := drpc.NewServer()
-	rpcClient := drpc.NewClient()
-	rpcServer.Register(proto.MessageName(&pb.EchoToS{}), echo)
+	rpcServer := NewServer()
+	rpcClient := NewClient()
+	rpcServer.Register("echo", echo)
 
 	addr := "localhost:7756"
 	go func() {
@@ -51,10 +56,10 @@ func main() {
 				dnet.WithMessageCallback(func(session dnet.Session, data interface{}) {
 					var err error
 					switch data.(type) {
-					case *drpc.Request:
-						err = rpcServer.OnRPCRequest(&channel{session: session}, data.(*drpc.Request))
-					case *drpc.Response:
-						err = rpcClient.OnRPCResponse(data.(*drpc.Response))
+					case *Request:
+						err = rpcServer.OnRPCRequest(&channel{session: session}, data.(*Request))
+					case *Response:
+						err = rpcClient.OnRPCResponse(data.(*Response))
 					default:
 						err = fmt.Errorf("invailed type")
 					}
@@ -64,17 +69,17 @@ func main() {
 				}))
 
 			time.Sleep(time.Second * 3)
-			msg := &pb.EchoToS{
-				Msg: proto.String("hello node2,i'm node1"),
+			msg := &EchoToS{
+				Msg: "hello node2,i'm node1",
 			}
 			fmt.Println("Start Call")
-			rpcClient.Call(&channel{session: session}, proto.MessageName(msg), msg, drpc.DefaultRPCTimeout, func(i interface{}, e error) {
+			rpcClient.Call(&channel{session: session}, "echo", msg, DefaultRPCTimeout, func(i interface{}, e error) {
 				if e != nil {
 					fmt.Println("Call", e)
 					return
 				}
-				resp := i.(*pb.EchoToC)
-				fmt.Println("node1 Call resp -->", resp.GetMsg())
+				resp := i.(*EchoToC)
+				fmt.Println("node1 Call resp -->", resp.Msg)
 			})
 
 		})); err != nil {
@@ -84,5 +89,5 @@ func main() {
 
 	fmt.Println(addr)
 
-	select {}
+	time.Sleep(time.Second * 20)
 }

@@ -7,13 +7,16 @@ import (
 	"sync/atomic"
 )
 
+// Server represents an RPC Server.
 type Server struct {
 	methods map[string]MethodHandler
 	mtx     sync.RWMutex
 }
 
-type MethodHandler func(replyer *Replyer, req interface{})
+type MethodHandler func(replier *Replier, req interface{})
 
+// Register Register the method on the server whit name.
+// call method by name.
 func (server *Server) Register(name string, h MethodHandler) {
 	if name == "" {
 		panic("drpc: Register name == ''")
@@ -31,6 +34,7 @@ func (server *Server) Register(name string, h MethodHandler) {
 	server.methods[name] = h
 }
 
+// OnRPCRequest
 func (server *Server) OnRPCRequest(channel RPCChannel, req *Request) error {
 	if channel == nil || req == nil {
 		return fmt.Errorf("drpc: OnRPCRequest invalid argument")
@@ -43,11 +47,11 @@ func (server *Server) OnRPCRequest(channel RPCChannel, req *Request) error {
 		return fmt.Errorf("drpc: OnRPCRequest invalid method %s", req.Method)
 	}
 
-	replyer := &Replyer{Channel: channel, req: req}
+	replyer := &Replier{Channel: channel, req: req}
 	return server.callMethod(method, replyer)
 }
 
-func (server *Server) callMethod(method MethodHandler, replyer *Replyer) (err error) {
+func (server *Server) callMethod(method MethodHandler, replyer *Replier) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			buf := make([]byte, 1024)
@@ -60,13 +64,14 @@ func (server *Server) callMethod(method MethodHandler, replyer *Replyer) (err er
 	return
 }
 
-type Replyer struct {
+// Replier
+type Replier struct {
 	Channel RPCChannel
-	fired   int32 //防止重复Reply
+	fired   int32
 	req     *Request
 }
 
-func (r *Replyer) Reply(ret interface{}) error {
+func (r *Replier) Reply(ret interface{}) error {
 	if ret == nil {
 		return fmt.Errorf("drpc: Reply ret == nil")
 	}
@@ -78,10 +83,11 @@ func (r *Replyer) Reply(ret interface{}) error {
 	return r.reply(&Response{SeqNo: r.req.SeqNo, Data: ret})
 }
 
-func (r *Replyer) reply(resp *Response) error {
+func (r *Replier) reply(resp *Response) error {
 	return r.Channel.SendResponse(resp)
 }
 
+// NewServer returns a new Server.
 func NewServer() *Server {
 	return &Server{
 		methods: map[string]MethodHandler{},

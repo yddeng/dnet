@@ -1,17 +1,18 @@
 package drpc
 
 type Request struct {
-	SeqNo  uint64
-	Method string // 请求方法名
+	SeqNo  uint64 // the number of request
+	Method string // The name of the service and method to call.
 	Data   interface{}
 }
 
 type Response struct {
-	SeqNo uint64
+	SeqNo uint64 // the number of request
 	Data  interface{}
 }
 
+// RPCChannel
 type RPCChannel interface {
-	SendRequest(req *Request) error    // 发送RPC请求
-	SendResponse(resp *Response) error // 发送RPC回复
+	SendRequest(req *Request) error    // send rpc request
+	SendResponse(resp *Response) error // send rpc response
 }
