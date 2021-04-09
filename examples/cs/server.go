@@ -29,7 +29,7 @@ func main() {
 	fmt.Println("serve tcp", addr)
 	if _, err := dnet.ServeTCP(addr, dnet.HandleFunc(func(conn dnet.NetConn) {
 		fmt.Println("new client", conn.RemoteAddr().String())
-		_, _ = dnet.NewTCPSession(conn,
+		_ = dnet.NewTCPSession(conn,
 			dnet.WithTimeout(time.Second*5, 0), // 超时
 			dnet.WithCodec(codec.NewCodec()),
 			dnet.WithErrorCallback(func(session dnet.Session, err error) {

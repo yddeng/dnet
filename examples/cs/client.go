@@ -18,7 +18,7 @@ func main() {
 		return
 	}
 
-	session, err := dnet.NewTCPSession(conn,
+	session := dnet.NewTCPSession(conn,
 		dnet.WithCodec(codec.NewCodec()),
 		dnet.WithErrorCallback(func(session dnet.Session, err error) {
 			fmt.Println("onError", err)
@@ -29,10 +29,6 @@ func main() {
 		dnet.WithCloseCallback(func(session dnet.Session, reason error) {
 			fmt.Println("onClose", reason)
 		}))
-	if err != nil {
-		fmt.Println("newTCPSession", err)
-		return
-	}
 
 	fmt.Printf("conn ok,remote:%s\n", session.RemoteAddr())
 

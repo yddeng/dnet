@@ -10,7 +10,7 @@ func TestNewWSSession(t *testing.T) {
 	go func() {
 		ServeWS(":4522", HandleFunc(func(conn NetConn) {
 			fmt.Println("new Conn", conn.RemoteAddr())
-			session, err := NewWSSession(conn,
+			session := NewWSSession(conn,
 				WithCloseCallback(func(session Session, reason error) {
 					fmt.Println(session.RemoteAddr(), reason, "ss close")
 				}),
@@ -20,10 +20,6 @@ func TestNewWSSession(t *testing.T) {
 				WithErrorCallback(func(session Session, err error) {
 					fmt.Println("ss error", err)
 				}))
-			if err != nil {
-				fmt.Println(err)
-				return
-			}
 			time.Sleep(time.Millisecond * 200)
 			fmt.Println(session.Send([]byte{4, 3, 2, 1}))
 			fmt.Println(session.Send([]byte{4, 3, 2, 1}))
@@ -39,7 +35,7 @@ func TestNewWSSession(t *testing.T) {
 		return
 	}
 
-	session, err := NewWSSession(wsConn,
+	session := NewWSSession(wsConn,
 		WithCloseCallback(func(session Session, reason error) {
 			fmt.Println(session.RemoteAddr(), reason, "cc close")
 		}),
@@ -49,10 +45,6 @@ func TestNewWSSession(t *testing.T) {
 		WithErrorCallback(func(session Session, err error) {
 			fmt.Println("cc error", err)
 		}))
-	if err != nil {
-		fmt.Println("NewWSSession", err)
-		return
-	}
 
 	fmt.Println(session.Send([]byte{1, 2, 3, 4}))
 	fmt.Println(session.Send([]byte{1, 2, 3, 4, 5}))

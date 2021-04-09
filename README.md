@@ -190,7 +190,7 @@ type testTCPHandler struct{}
 
 func (this *testTCPHandler) OnConnection(conn NetConn) {
 	fmt.Println("new Conn", conn.RemoteAddr())
-	session, err := NewTCPSession(conn,
+	session := NewTCPSession(conn,
 		WithCloseCallback(func(session Session, reason error) {
 			fmt.Println(session.RemoteAddr(), reason, "ss close")
 		}),
@@ -200,10 +200,6 @@ func (this *testTCPHandler) OnConnection(conn NetConn) {
 		WithErrorCallback(func(session Session, err error) {
 			fmt.Println("ss error", err)
 		}))
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
 	time.Sleep(time.Millisecond * 200)
 	fmt.Println(session.Send([]byte{4, 3, 2, 1}))
 	fmt.Println(session.Send([]byte{4, 3, 2, 1}))
@@ -222,7 +218,7 @@ func TestNewTCPSession(t *testing.T) {
 		return
 	}
 
-	session, err := NewTCPSession(conn,
+	session := NewTCPSession(conn,
 		WithCloseCallback(func(session Session, reason error) {
 			fmt.Println(session.RemoteAddr(), reason, "cc close")
 		}),
@@ -232,10 +228,6 @@ func TestNewTCPSession(t *testing.T) {
 		WithErrorCallback(func(session Session, err error) {
 			fmt.Println("cc error", err)
 		}))
-	if err != nil {
-		fmt.Println("newTCPSession", err)
-		return
-	}
 
 	fmt.Println(session.Send([]byte{1, 2, 3, 4}))
 	fmt.Println(session.Send([]byte{1, 2, 3, 4, 5}))
