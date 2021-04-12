@@ -10,18 +10,6 @@ import (
 	"time"
 )
 
-func echo(replyer *drpc.Replier, arg interface{}) {
-	req := arg.(*pb.EchoToS)
-	fmt.Println("echo", req.GetMsg())
-
-	// rpc timeout
-	time.Sleep(time.Second * 9)
-	err := replyer.Reply(&pb.EchoToC{Msg: proto.String(req.GetMsg())})
-	if err != nil {
-		fmt.Println(err)
-	}
-}
-
 type channel struct {
 	session dnet.Session
 }
@@ -35,10 +23,7 @@ func (this *channel) SendResponse(resp *drpc.Response) error {
 }
 
 func main() {
-
-	rpcServer := drpc.NewServer()
 	rpcClient := drpc.NewClient()
-	rpcServer.Register(proto.MessageName(&pb.EchoToS{}), echo)
 
 	addr := "localhost:7756"
 	conn, err := dnet.DialTCP(addr, 0)
@@ -59,8 +44,6 @@ func main() {
 		dnet.WithMessageCallback(func(session dnet.Session, data interface{}) {
 			var err error
 			switch data.(type) {
-			case *drpc.Request:
-				err = rpcServer.OnRPCRequest(&channel{session: session}, data.(*drpc.Request))
 			case *drpc.Response:
 				err = rpcClient.OnRPCResponse(data.(*drpc.Response))
 			default:
@@ -74,8 +57,15 @@ func main() {
 	msg := &pb.EchoToS{
 		Msg: proto.String("hello node1,i'm node2"),
 	}
-	fmt.Println("Start Call")
-	rpcClient.Call(&channel{session: session}, proto.MessageName(msg), msg, drpc.DefaultRPCTimeout, func(i interface{}, e error) {
+
+	fmt.Println("sync Call")
+	// sync
+	ret, err := rpcClient.Call(&channel{session: session}, proto.MessageName(msg), msg, drpc.DefaultRPCTimeout)
+	fmt.Println(ret, err)
+
+	fmt.Println("async Call")
+	// async
+	rpcClient.Go(&channel{session: session}, proto.MessageName(msg), msg, drpc.DefaultRPCTimeout, func(i interface{}, e error) {
 		if e != nil {
 			fmt.Println("Call", e)
 			return
@@ -84,6 +74,6 @@ func main() {
 		fmt.Println("node2 Call resp -->", resp.GetMsg())
 	})
 
-	select {}
+	time.Sleep(time.Second * 10)
 
 }

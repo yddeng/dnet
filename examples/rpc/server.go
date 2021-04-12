@@ -32,7 +32,6 @@ func (this *channel) SendResponse(resp *drpc.Response) error {
 func main() {
 
 	rpcServer := drpc.NewServer()
-	rpcClient := drpc.NewClient()
 	rpcServer.Register(proto.MessageName(&pb.EchoToS{}), echo)
 
 	addr := "localhost:7756"
@@ -40,7 +39,7 @@ func main() {
 		if err := dnet.ServeTCP(addr, dnet.HandleFunc(func(conn dnet.NetConn) {
 			fmt.Println("new client", conn.RemoteAddr().String())
 
-			session := dnet.NewTCPSession(conn,
+			dnet.NewTCPSession(conn,
 				dnet.WithCodec(codec.NewRpcCodec()),
 				dnet.WithErrorCallback(func(session dnet.Session, err error) {
 					fmt.Println("onError", err)
@@ -53,8 +52,6 @@ func main() {
 					switch data.(type) {
 					case *drpc.Request:
 						err = rpcServer.OnRPCRequest(&channel{session: session}, data.(*drpc.Request))
-					case *drpc.Response:
-						err = rpcClient.OnRPCResponse(data.(*drpc.Response))
 					default:
 						err = fmt.Errorf("invailed type")
 					}
@@ -62,21 +59,6 @@ func main() {
 						fmt.Println("read", err)
 					}
 				}))
-
-			time.Sleep(time.Second * 3)
-			msg := &pb.EchoToS{
-				Msg: proto.String("hello node2,i'm node1"),
-			}
-			fmt.Println("Start Call")
-			rpcClient.Call(&channel{session: session}, proto.MessageName(msg), msg, drpc.DefaultRPCTimeout, func(i interface{}, e error) {
-				if e != nil {
-					fmt.Println("Call", e)
-					return
-				}
-				resp := i.(*pb.EchoToC)
-				fmt.Println("node1 Call resp -->", resp.GetMsg())
-			})
-
 		})); err != nil {
 			fmt.Println(err)
 		}
@@ -84,5 +66,5 @@ func main() {
 
 	fmt.Println(addr)
 
-	select {}
+	time.Sleep(time.Second * 20)
 }

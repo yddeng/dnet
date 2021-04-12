@@ -243,5 +243,6 @@ func TestNewTCPSession(t *testing.T) {
 }
 ```
 
-echo 的示例项目 examples/cs 
+**echo 示例项目 examples/cs**
 
+**rpc 示例 example/rpc**

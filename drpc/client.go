@@ -15,7 +15,7 @@ var ErrRPCTimeout = fmt.Errorf("drpc: rpc timeout. ")
 // Call represents an active RPC.
 type Call struct {
 	reqNo    uint64
-	callback func(interface{}, error) // response
+	callback func(interface{}, error)
 	timer    timer.Timer
 }
 
@@ -29,25 +29,25 @@ type Client struct {
 	pending  sync.Map       // map[uint64]*Call
 }
 
-// Call invokes the function asynchronously.
-//
-// waits for it to complete, and returns its error status.
-//
-// func SyncCall() (ret interface{}, err error) {
-// 	 waitC := make(chan struct{})
-//   f := func(ret_ interface{}, err_ error) {
-// 		ret = ret_
-// 		err = err_
-// 		close(waitC)
-// 	 }
-// 	 Call(..., f)
-// 	 <-waitC
-// 	 return
-// }
-//
-func (client *Client) Call(channel RPCChannel, method string, data interface{}, timeout time.Duration, callback func(interface{}, error)) error {
+// Call invokes the function synchronous, waits for it to complete, and returns its result and error status.
+func (client *Client) Call(channel RPCChannel, method string, data interface{}, timeout time.Duration) (result interface{}, err error) {
+	waitC := make(chan struct{})
+	f := func(ret_ interface{}, err_ error) {
+		result = ret_
+		err = err_
+		close(waitC)
+	}
+	if err := client.Go(channel, method, data, timeout, f); err != nil {
+		return nil, err
+	}
+	<-waitC
+	return
+}
+
+// Go invokes the function asynchronously.
+func (client *Client) Go(channel RPCChannel, method string, data interface{}, timeout time.Duration, callback func(interface{}, error)) error {
 	if callback == nil {
-		return fmt.Errorf("drpc: AsyncCall callback == nil")
+		return fmt.Errorf("drpc: Go callback == nil")
 	}
 
 	req := &Request{
