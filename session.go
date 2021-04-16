@@ -3,7 +3,6 @@ package dnet
 import (
 	"net"
 	"sync"
-	"sync/atomic"
 	"time"
 )
 
@@ -11,7 +10,7 @@ type session struct {
 	opts *Options
 
 	conn    NetConn
-	context atomic.Value //interface{} // 用户数据
+	context interface{} // 用户数据
 
 	sendOnce      sync.Once
 	sendNotifyCh  chan struct{} // 发送消息通知
@@ -43,11 +42,15 @@ func newSession(conn NetConn, options *Options) *session {
 }
 
 func (this *session) SetContext(context interface{}) {
-	this.context.Store(context)
+	this.lock.Lock()
+	defer this.lock.Unlock()
+	this.context = context
 }
 
 func (this *session) Context() interface{} {
-	return this.context.Load()
+	this.lock.Lock()
+	defer this.lock.Unlock()
+	return this.context
 }
 
 func (this *session) IsClosed() bool {
