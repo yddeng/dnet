@@ -2,6 +2,7 @@ package drpc
 
 import (
 	"fmt"
+	"github.com/pkg/errors"
 	"github.com/yddeng/timer"
 	"sync"
 	"sync/atomic"
@@ -51,7 +52,7 @@ func (client *Client) Go(channel RPCChannel, method string, data interface{}, ti
 	}
 
 	req := &Request{
-		SeqNo:  atomic.AddUint64(&client.reqNo, 1),
+		Seq:    atomic.AddUint64(&client.reqNo, 1),
 		Method: method,
 		Data:   data,
 	}
@@ -61,7 +62,7 @@ func (client *Client) Go(channel RPCChannel, method string, data interface{}, ti
 	}
 
 	c := &Call{
-		reqNo:    req.SeqNo,
+		reqNo:    req.Seq,
 		callback: callback,
 	}
 
@@ -79,18 +80,22 @@ func (client *Client) Go(channel RPCChannel, method string, data interface{}, ti
 
 // OnRPCResponse
 func (client *Client) OnRPCResponse(resp *Response) error {
-	v, ok := client.pending.Load(resp.SeqNo)
+	v, ok := client.pending.Load(resp.Seq)
 	if !ok {
-		return fmt.Errorf("drpc: OnRPCResponse reqNo:%d is not found", resp.SeqNo)
+		return fmt.Errorf("drpc: OnRPCResponse reqNo:%d is not found", resp.Seq)
 	}
 
 	call := v.(*Call)
-	call.callback(resp.Data, nil)
+	if resp.Error != "" {
+		call.callback(nil, errors.New(resp.Error))
+	} else {
+		call.callback(resp.Data, nil)
+	}
 
 	if call.timer != nil {
 		call.timer.Stop()
 	}
-	client.pending.Delete(resp.SeqNo)
+	client.pending.Delete(resp.Seq)
 	return nil
 
 }
@@ -100,7 +105,7 @@ func (client *Client) OnRPCResponse(resp *Response) error {
 // It adds a timer manager to
 func NewClient() *Client {
 	return &Client{
-		timerMgr: timer.NewTimeWheelMgr(time.Millisecond*50, 20),
+		timerMgr: timer.NewTimeWheelMgr(time.Millisecond*50, 200),
 	}
 }
 
