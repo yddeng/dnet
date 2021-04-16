@@ -3,18 +3,28 @@ package main
 import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
+	"github.com/pkg/errors"
 	"github.com/yddeng/dnet"
 	"github.com/yddeng/dnet/drpc"
 	"github.com/yddeng/dnet/examples/pb"
 	"github.com/yddeng/dnet/examples/rpc/codec"
+	"sync/atomic"
 	"time"
 )
+
+var times int32 = 0
 
 func echo(replyer *drpc.Replier, arg interface{}) {
 	req := arg.(*pb.EchoToS)
 	fmt.Println("echo", req.GetMsg())
 
-	replyer.Reply(&pb.EchoToC{Msg: proto.String("ok")})
+	t := atomic.AddInt32(&times, 1)
+	if t == 1 {
+		replyer.Reply(nil, errors.New("test rpc error"))
+		return
+	}
+
+	replyer.Reply(&pb.EchoToC{Msg: proto.String("ok")}, nil)
 }
 
 type channel struct {

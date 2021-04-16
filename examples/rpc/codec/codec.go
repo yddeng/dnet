@@ -37,37 +37,11 @@ func NewRpcCodec() *RpcCodec {
 	}
 }
 
-type flag byte
-
 const (
-	message flag = 0x80
-	rpcReq  flag = 0x40
-	rpcResp flag = 0x20
+	rpcReq     byte = 0x01
+	rpcResp    byte = 0x02
+	rpcRespErr byte = 0x04
 )
-
-func (this flag) setType(tt flag) flag {
-	switch tt {
-	case message:
-		return this | message
-	case rpcReq:
-		return this | rpcReq
-	case rpcResp:
-		return this | rpcResp
-	default:
-		panic("invalid type")
-	}
-}
-
-func (this flag) getType() flag {
-	if this&message > 0 {
-		return message
-	} else if this&rpcReq > 0 {
-		return rpcReq
-	} else if this&rpcResp > 0 {
-		return rpcResp
-	}
-	return message
-}
 
 //解码
 func (decoder *RpcCodec) Decode(reader io.Reader) (interface{}, error) {
@@ -103,8 +77,8 @@ func (decoder *RpcCodec) unPack() (interface{}, error) {
 
 	var ret interface{}
 	var err error
-	tt := flag(decoder.flag).getType()
-	switch tt {
+
+	switch decoder.flag {
 	case rpcReq:
 		name, _ := decoder.readBuf.ReadString(int(decoder.nameLen))
 		body, _ := decoder.readBuf.ReadBytes(int(decoder.bodyLen))
@@ -114,24 +88,26 @@ func (decoder *RpcCodec) unPack() (interface{}, error) {
 			return nil, err
 		}
 		ret = &drpc.Request{
-			SeqNo:  decoder.seqNo,
+			Seq:    decoder.seqNo,
 			Method: name,
 			Data:   msg,
 		}
-	case rpcResp:
-		resp := &drpc.Response{SeqNo: decoder.seqNo}
+	case rpcResp, rpcRespErr:
+		resp := &drpc.Response{Seq: decoder.seqNo}
+		if decoder.flag == rpcRespErr {
+			body, _ := decoder.readBuf.ReadBytes(int(decoder.bodyLen))
+			resp.Error = string(body)
+		} else {
+			name, _ := decoder.readBuf.ReadString(int(decoder.nameLen))
+			body, _ := decoder.readBuf.ReadBytes(int(decoder.bodyLen))
 
-		name, _ := decoder.readBuf.ReadString(int(decoder.nameLen))
-		body, _ := decoder.readBuf.ReadBytes(int(decoder.bodyLen))
-
-		msg, err := Unmarshal(name, body)
-		if err != nil {
-			return nil, err
+			msg, err := Unmarshal(name, body)
+			if err != nil {
+				return nil, err
+			}
+			resp.Data = msg
 		}
-		resp.Data = msg
-
 		ret = resp
-	case message:
 	default:
 		err = fmt.Errorf("unPack err: flag is %d", decoder.flag)
 	}
@@ -144,7 +120,7 @@ func (decoder *RpcCodec) unPack() (interface{}, error) {
 //编码
 func (encoder *RpcCodec) Encode(o interface{}) ([]byte, error) {
 	var seqNo uint64
-	var flag flag
+	var flag byte
 	var name string
 	var data []byte
 	var nameLen, bodyLen int
@@ -153,8 +129,8 @@ func (encoder *RpcCodec) Encode(o interface{}) ([]byte, error) {
 	switch o.(type) {
 	case *drpc.Request:
 		request := o.(*drpc.Request)
-		seqNo = request.SeqNo
-		flag = flag.setType(rpcReq)
+		seqNo = request.Seq
+		flag = rpcReq
 
 		name, data, err = Marshal(request.Data)
 		if err != nil {
@@ -162,12 +138,16 @@ func (encoder *RpcCodec) Encode(o interface{}) ([]byte, error) {
 		}
 	case *drpc.Response:
 		response := o.(*drpc.Response)
-		seqNo = response.SeqNo
-		flag = flag.setType(rpcResp)
-
-		name, data, err = Marshal(response.Data)
-		if err != nil {
-			return nil, err
+		seqNo = response.Seq
+		if response.Error != "" {
+			flag = rpcRespErr
+			data = []byte(response.Error)
+		} else {
+			flag = rpcResp
+			name, data, err = Marshal(response.Data)
+			if err != nil {
+				return nil, err
+			}
 		}
 
 	default:
@@ -186,13 +166,15 @@ func (encoder *RpcCodec) Encode(o interface{}) ([]byte, error) {
 	//写入seqNo
 	buff.WriteUint64BE(seqNo)
 	//flag
-	buff.WriteByte(byte(flag))
+	buff.WriteByte(flag)
 	//namelen
 	buff.WriteUint8BE(uint8(nameLen))
 	//bodylen
 	buff.WriteUint16BE(uint16(bodyLen))
 	//name
-	buff.WriteString(name)
+	if flag != rpcRespErr {
+		buff.WriteString(name)
+	}
 	//body
 	buff.WriteBytes(data)
 
