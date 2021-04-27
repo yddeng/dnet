@@ -27,7 +27,7 @@ type Call struct {
 type Client struct {
 	reqNo    uint64         // serial number
 	timerMgr timer.TimerMgr // timer
-	pending  sync.Map       // map[uint64]*Call
+	pending  sync.Map       //map[uint64]*Call
 }
 
 // Call invokes the function synchronous, waits for it to complete, and returns its result and error status.
@@ -51,36 +51,64 @@ func (client *Client) Go(channel RPCChannel, method string, data interface{}, ti
 		return fmt.Errorf("drpc: Go callback == nil")
 	}
 
-	req := &Request{
-		Seq:    atomic.AddUint64(&client.reqNo, 1),
-		Method: method,
-		Data:   data,
-	}
+	seq := atomic.AddUint64(&client.reqNo, 1)
+	c := &Call{reqNo: seq, callback: callback}
+	req := &Request{Seq: seq, Method: method, Data: data}
+	client.pending.Store(seq, c)
+
+	c.timer = client.timerMgr.OnceTimer(timeout, func() {
+		if v, ok := client.pending.LoadAndDelete(seq); ok {
+			v.(*Call).callback(nil, ErrRPCTimeout)
+		}
+	})
 
 	if err := channel.SendRequest(req); err != nil {
+		if v, ok := client.pending.LoadAndDelete(seq); ok {
+			if v.(*Call).timer != nil {
+				v.(*Call).timer.Stop()
+			}
+		}
 		return err
 	}
 
-	c := &Call{
-		reqNo:    req.Seq,
-		callback: callback,
-	}
+	//client.lock.Lock()
+	//seq := client.reqNo
+	//client.reqNo++
+	//c := &Call{reqNo: seq, callback: callback}
+	//client.pending[seq] = c
+	//client.lock.Unlock()
+	//
+	//c.timer = client.timerMgr.OnceTimer(timeout, func() {
+	//	client.lock.Lock()
+	//	if call, ok := client.pending[seq]; ok {
+	//		delete(client.pending, seq)
+	//		call.callback(nil, ErrRPCTimeout)
+	//		call.timer = nil
+	//	}
+	//	client.lock.Unlock()
+	//})
+	//
+	//req := &Request{Seq: seq, Method: method, Data: data}
+	//
+	//// 避免channel 中直接调用 OnRPCResponse, 导致死锁
+	//if err := channel.SendRequest(req); err != nil {
+	//	client.lock.Lock()
+	//	if call, ok := client.pending[seq]; ok {
+	//		delete(client.pending, seq)
+	//		if call.timer != nil {
+	//			call.timer.Stop()
+	//		}
+	//	}
+	//	client.lock.Unlock()
+	//	return err
+	//}
 
-	c.timer = client.timerMgr.OnceTimer(timeout, func() {
-		if _, ok := client.pending.Load(c.reqNo); ok {
-			client.pending.Delete(c.reqNo)
-			c.callback(nil, ErrRPCTimeout)
-		}
-		c.timer = nil
-	})
-
-	client.pending.Store(c.reqNo, c)
 	return nil
 }
 
 // OnRPCResponse
 func (client *Client) OnRPCResponse(resp *Response) error {
-	v, ok := client.pending.Load(resp.Seq)
+	v, ok := client.pending.LoadAndDelete(resp.Seq)
 	if !ok {
 		return fmt.Errorf("drpc: OnRPCResponse reqNo:%d is not found", resp.Seq)
 	}
@@ -95,7 +123,6 @@ func (client *Client) OnRPCResponse(resp *Response) error {
 	if call.timer != nil {
 		call.timer.Stop()
 	}
-	client.pending.Delete(resp.Seq)
 	return nil
 
 }
