@@ -46,7 +46,7 @@ func main() {
 
 	addr := "localhost:7756"
 	go func() {
-		if err := dnet.ServeTCP(addr, dnet.HandleFunc(func(conn dnet.NetConn) {
+		if err := dnet.ServeTCPFunc(addr, func(conn dnet.NetConn) {
 			fmt.Println("new client", conn.RemoteAddr().String())
 
 			dnet.NewTCPSession(conn,
@@ -69,7 +69,7 @@ func main() {
 						fmt.Println("read", err)
 					}
 				}))
-		})); err != nil {
+		}); err != nil {
 			fmt.Println(err)
 		}
 	}()

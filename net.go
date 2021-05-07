@@ -52,7 +52,7 @@ type NetConn interface {
 }
 
 // AcceptorHandle type interface
-type AcceptorHandle interface {
+type AcceptorHandler interface {
 	// handler to invokes
 	OnConnection(conn NetConn)
 }
@@ -64,15 +64,18 @@ func (handler AcceptorHandlerFunc) OnConnection(conn NetConn) {
 	handler(conn)
 }
 
-// HandleFunc returns AcceptorHandlerFunc with the handler function.
+// Deprecated: HandleFunc returns AcceptorHandlerFunc with the handler function.
 func HandleFunc(handler func(conn NetConn)) AcceptorHandlerFunc {
 	return handler
 }
 
 // Acceptor type interface
 type Acceptor interface {
-	// Serve listen and serve
-	Serve(handler AcceptorHandle) error
+	// Serve listen and serve with AcceptorHandler
+	Serve(handler AcceptorHandler) error
+
+	// ServeFunc listen and serve with AcceptorHandlerFunc
+	ServeFunc(handler AcceptorHandlerFunc) error
 
 	// Stop stop the acceptor
 	Stop()

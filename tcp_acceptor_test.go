@@ -20,7 +20,7 @@ func TestNewTCPAcceptor(t *testing.T) {
 			})
 		}()
 
-		err := acceptor.Serve(HandleFunc(func(conn NetConn) {
+		err := acceptor.ServeFunc(func(conn NetConn) {
 			buf := make([]byte, 8)
 			n, err := conn.Read(buf)
 			if err != nil {
@@ -32,7 +32,7 @@ func TestNewTCPAcceptor(t *testing.T) {
 			time.Sleep(time.Millisecond * 300)
 			conn.Write(buf[:n])
 
-		}))
+		})
 		if err != nil {
 			fmt.Println(err)
 		}

@@ -33,14 +33,19 @@ func NewWSAcceptor(address string) *WSAcceptor {
 	}
 }
 
-// ServeWS listen and serve ws address with handler
-func ServeWS(address string, handler AcceptorHandle) error {
+// ServeWS listen and serve ws address with AcceptorHandler
+func ServeWS(address string, handler AcceptorHandler) error {
+	return NewWSAcceptor(address).Serve(handler)
+}
+
+// ServeWS listen and serve ws address with AcceptorHandlerFunc
+func ServeWSFunc(address string, handler AcceptorHandlerFunc) error {
 	return NewWSAcceptor(address).Serve(handler)
 }
 
 type wsHandler struct {
 	upgrader *websocket.Upgrader
-	handler  AcceptorHandle
+	handler  AcceptorHandler
 }
 
 func (h *wsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -53,7 +58,7 @@ func (h *wsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 // Serve listens and serve in the specified addr
-func (this *WSAcceptor) Serve(handler AcceptorHandle) error {
+func (this *WSAcceptor) Serve(handler AcceptorHandler) error {
 	if handler == nil {
 		return errors.New("dnet:Serve handler is nil. ")
 	}
@@ -75,6 +80,11 @@ func (this *WSAcceptor) Serve(handler AcceptorHandle) error {
 	}
 
 	return nil
+}
+
+// ServeFunc listens and serve in the specified addr
+func (this *WSAcceptor) ServeFunc(handler AcceptorHandlerFunc) error {
+	return this.Serve(handler)
 }
 
 // Addr returns the addr the acceptor will listen on

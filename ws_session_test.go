@@ -8,7 +8,7 @@ import (
 
 func TestNewWSSession(t *testing.T) {
 	go func() {
-		ServeWS(":4522", HandleFunc(func(conn NetConn) {
+		ServeWSFunc(":4522", func(conn NetConn) {
 			fmt.Println("new Conn", conn.RemoteAddr())
 			session := NewWSSession(conn,
 				WithCloseCallback(func(session Session, reason error) {
@@ -23,7 +23,7 @@ func TestNewWSSession(t *testing.T) {
 			time.Sleep(time.Millisecond * 200)
 			fmt.Println(session.Send([]byte{4, 3, 2, 1}))
 			fmt.Println(session.Send([]byte{4, 3, 2, 1}))
-		}))
+		})
 	}()
 
 	//http.HandleFunc()

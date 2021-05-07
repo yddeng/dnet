@@ -144,8 +144,10 @@ type Codec interface {
 
 ```
 type Acceptor interface {
-	// Serve listen and serve
-	Serve(handler AcceptorHandle) error
+	// Serve listen and serve with AcceptorHandler
+	Serve(handler AcceptorHandler) error
+	// ServeFunc listen and serve with AcceptorHandlerFunc
+	ServeFunc(handler AcceptorHandlerFunc) error
 	// Stop stop the acceptor
 	Stop()
 	// Addr returns address of the listener
@@ -157,7 +159,7 @@ type Acceptor interface {
 
 ```
 // AcceptorHandle type interface
-type AcceptorHandle interface {
+type AcceptorHandler interface {
 	// handler to invokes
 	OnConnection(conn NetConn)
 }

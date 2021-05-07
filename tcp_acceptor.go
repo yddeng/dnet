@@ -18,13 +18,18 @@ func NewTCPAcceptor(address string) *TCPAcceptor {
 	return &TCPAcceptor{address: address}
 }
 
-// ServeTCP listen and serve tcp address with handler
-func ServeTCP(address string, handler AcceptorHandle) error {
+// ServeTCP listen and serve tcp address with AcceptorHandler
+func ServeTCP(address string, handler AcceptorHandler) error {
 	return NewTCPAcceptor(address).Serve(handler)
 }
 
+// ServeTCPFunc listen and serve tcp address with AcceptorHandlerFunc
+func ServeTCPFunc(address string, handler AcceptorHandlerFunc) error {
+	return NewTCPAcceptor(address).ServeFunc(handler)
+}
+
 // Serve listens and serve in the specified addr
-func (this *TCPAcceptor) Serve(handler AcceptorHandle) error {
+func (this *TCPAcceptor) Serve(handler AcceptorHandler) error {
 	if handler == nil {
 		return errors.New("dnet:Serve handler is nil. ")
 	}
@@ -54,6 +59,11 @@ func (this *TCPAcceptor) Serve(handler AcceptorHandle) error {
 		go handler.OnConnection(conn)
 	}
 
+}
+
+// ServeFunc listens and serve in the specified addr
+func (this *TCPAcceptor) ServeFunc(handler AcceptorHandlerFunc) error {
+	return this.Serve(handler)
 }
 
 // Addr returns the addr the acceptor will listen on
