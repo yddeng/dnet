@@ -3,7 +3,7 @@ package daio
 import (
 	"fmt"
 	"github.com/yddeng/dnet"
-	"github.com/yddeng/dutil/buffer"
+	"github.com/yddeng/utils/buffer"
 	"io"
 	"reflect"
 	"testing"

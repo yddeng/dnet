@@ -2,7 +2,7 @@ package dnet
 
 import (
 	"fmt"
-	"github.com/yddeng/dutil/buffer"
+	"github.com/yddeng/utils/buffer"
 	"io"
 	"reflect"
 )

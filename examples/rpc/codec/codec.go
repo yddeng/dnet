@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
 	"github.com/yddeng/dnet/drpc"
-	"github.com/yddeng/dutil/buffer"
+	"github.com/yddeng/utils/buffer"
 	"io"
 	"reflect"
 )

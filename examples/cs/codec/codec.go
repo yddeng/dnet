@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/yddeng/dnet/examples/module/message"
 	"github.com/yddeng/dnet/examples/module/protocol"
-	"github.com/yddeng/dutil/buffer"
+	"github.com/yddeng/utils/buffer"
 	"io"
 )
 
