@@ -16,10 +16,6 @@ var (
 	ErrReadTimeout = errors.New("dnet: read timeout. ")
 )
 
-const (
-	defSendChannelSize = 1024
-)
-
 type Session interface {
 	// connection
 	NetConn() interface{}

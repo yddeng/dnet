@@ -3,26 +3,26 @@ package dnet
 import (
 	"net"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
+const defSendChannelSize = 1024
+
 type session struct {
-	opts *Options
+	opts    *Options
+	optLock sync.Mutex
 
 	conn    NetConn
-	context interface{} // 用户数据
+	context atomic.Value // interface{} // 用户数据
 
 	sendOnce      sync.Once
-	sendNotifyCh  chan struct{} // 发送消息通知
-	sendMessageCh chan *message // 发送队列
+	sendNotifyCh  chan struct{}    // 发送消息通知
+	sendMessageCh chan interface{} // 发送队列
 
-	closed    bool
 	waitGroup sync.WaitGroup
-	lock      sync.Mutex
-}
-
-type message struct {
-	data interface{}
+	closeOnce sync.Once
+	chClose   chan struct{}
 }
 
 func newSession(conn NetConn, options *Options) *session {
@@ -34,30 +34,41 @@ func newSession(conn NetConn, options *Options) *session {
 		conn:         conn,
 		opts:         options,
 		sendNotifyCh: make(chan struct{}, 1),
+		chClose:      make(chan struct{}),
 	}
 
-	go session.readThread()
+	if options.MsgCallback != nil {
+		session.waitGroup.Add(1)
+		go session.readThread()
+	}
 
 	return session
 }
 
 func (this *session) SetContext(context interface{}) {
-	this.lock.Lock()
-	defer this.lock.Unlock()
-	this.context = context
+	this.context.Store(context)
 }
 
 func (this *session) Context() interface{} {
-	this.lock.Lock()
-	defer this.lock.Unlock()
-	return this.context
+	return this.context.Load()
 }
 
 func (this *session) IsClosed() bool {
-	this.lock.Lock()
-	defer this.lock.Unlock()
-	return this.closed
+	select {
+	case <-this.chClose:
+		return true
+	default:
+		return false
+	}
 }
+
+/*
+func (this *session) SetOption(opt Option) {
+	this.optLock.Lock()
+	defer this.optLock.Unlock()
+	this.opts = copyOption(this.opts, opt)
+}
+*/
 
 func (this *session) NetConn() interface{} {
 	return this.conn
@@ -74,11 +85,9 @@ func (this *session) RemoteAddr() net.Addr {
 
 // 接收线程
 func (this *session) readThread() {
-	this.waitGroup.Add(1)
 	defer this.waitGroup.Done()
 
 	for {
-
 		if this.opts.ReadTimeout > 0 {
 			if err := this.conn.SetReadDeadline(time.Now().Add(this.opts.ReadTimeout)); err != nil {
 				if this.opts.ErrorCallback != nil {
@@ -116,7 +125,6 @@ func (this *session) readThread() {
 // 发送线程
 // 关闭连接时，发送完后再关闭
 func (this *session) writeThread() {
-	this.waitGroup.Add(1)
 	defer this.waitGroup.Done()
 
 	for {
@@ -125,7 +133,7 @@ func (this *session) writeThread() {
 			if this.IsClosed() {
 				return
 			}
-			if data, err := this.opts.Codec.Encode(msg.data); err != nil {
+			if data, err := this.opts.Codec.Encode(msg); err != nil {
 				if !this.IsClosed() {
 					if this.opts.ErrorCallback != nil {
 						this.opts.ErrorCallback(this, err)
@@ -194,13 +202,12 @@ func (this *session) Send(o interface{}) error {
 	}
 
 	this.sendOnce.Do(func() {
-		this.sendMessageCh = make(chan *message, this.opts.SendChannelSize)
+		this.sendMessageCh = make(chan interface{}, this.opts.SendChannelSize)
+		this.waitGroup.Add(1)
 		go this.writeThread()
 	})
 
-	this.sendMessageCh <- &message{
-		data: o,
-	}
+	this.sendMessageCh <- o
 	sendNotifyChan(this.sendNotifyCh)
 
 	return nil
@@ -211,27 +218,21 @@ func (this *session) Send(o interface{}) error {
  先关闭读，待写发送完毕关闭写
 */
 func (this *session) Close(reason error) {
-	this.lock.Lock()
-	if this.closed {
-		this.lock.Unlock()
-		return
-	}
+	this.closeOnce.Do(func() {
+		close(this.chClose)
+		//_ = this.conn.(*net.TCPConn).CloseRead()
+		_ = this.conn.Close()
+		// 触发循环
+		sendNotifyChan(this.sendNotifyCh)
 
-	this.closed = true
-	this.lock.Unlock()
-
-	//_ = this.conn.(*net.TCPConn).CloseRead()
-	_ = this.conn.Close()
-	// 触发循环
-	sendNotifyChan(this.sendNotifyCh)
-
-	go func() {
-		this.waitGroup.Wait()
-		//_ = this.conn.Close()
-		if this.opts.CloseCallback != nil {
-			this.opts.CloseCallback(this, reason)
-		}
-	}()
+		go func() {
+			this.waitGroup.Wait()
+			//_ = this.conn.Close()
+			if this.opts.CloseCallback != nil {
+				this.opts.CloseCallback(this, reason)
+			}
+		}()
+	})
 }
 
 // 作为通知用的 channel， make(chan struct{}, 1)

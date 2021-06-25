@@ -2,7 +2,9 @@ package dnet
 
 import (
 	"errors"
+	"io"
 	"net"
+	"strings"
 	"sync/atomic"
 	"time"
 )
@@ -45,15 +47,26 @@ func (this *TCPAcceptor) Serve(handler AcceptorHandler) error {
 	this.listener = listener
 	defer this.Stop()
 
+	var tempDelay time.Duration
 	for {
 		conn, err := this.listener.Accept()
 		if err != nil {
 			if ne, ok := err.(net.Error); ok && ne.Temporary() {
-				time.Sleep(time.Millisecond * 5)
+				if tempDelay == 0 {
+					tempDelay = 5 * time.Millisecond
+				} else {
+					tempDelay *= 2
+				}
+				if max := 1 * time.Second; tempDelay > max {
+					tempDelay = max
+				}
+				time.Sleep(tempDelay)
 				continue
-			} else {
-				return err
 			}
+			if strings.Contains(err.Error(), "use of closed network connection") {
+				return io.EOF
+			}
+			return err
 		}
 
 		go handler.OnConnection(conn)

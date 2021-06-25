@@ -13,6 +13,14 @@ func loadOptions(options ...Option) *Options {
 	return opts
 }
 
+// copyOption returns an *Options with options
+func copyOption(src *Options, opts ...Option) *Options {
+	for _, option := range opts {
+		option(src)
+	}
+	return src
+}
+
 // Options contains all options which will be applied when instantiating a session.
 type Options struct {
 	// when the send channel is full, BlockSend will block if it is true.
