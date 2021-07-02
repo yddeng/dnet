@@ -130,9 +130,6 @@ func (this *session) writeThread() {
 	for {
 		select {
 		case msg := <-this.sendMessageCh:
-			if this.IsClosed() {
-				return
-			}
 			if data, err := this.opts.Codec.Encode(msg); err != nil {
 				if !this.IsClosed() {
 					if this.opts.ErrorCallback != nil {
