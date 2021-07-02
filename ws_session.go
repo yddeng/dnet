@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/yddeng/utils/buffer"
 	"io"
+	"net"
 	"reflect"
 )
 
@@ -38,7 +39,7 @@ type WSSession struct {
 }
 
 // NewWSSession return an initialized *WSSession
-func NewWSSession(conn NetConn, options ...Option) *WSSession {
+func NewWSSession(conn net.Conn, options ...Option) *WSSession {
 	op := loadOptions(options...)
 	if op.MsgCallback == nil {
 		// need message callback

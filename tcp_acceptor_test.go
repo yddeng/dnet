@@ -2,6 +2,7 @@ package dnet
 
 import (
 	"fmt"
+	"net"
 	"sync"
 	"testing"
 	"time"
@@ -20,7 +21,7 @@ func TestNewTCPAcceptor(t *testing.T) {
 			})
 		}()
 
-		err := acceptor.ServeFunc(func(conn NetConn) {
+		err := acceptor.ServeFunc(func(conn net.Conn) {
 			buf := make([]byte, 8)
 			n, err := conn.Read(buf)
 			if err != nil {

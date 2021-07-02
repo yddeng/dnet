@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/yddeng/utils/buffer"
 	"io"
+	"net"
 	"reflect"
 )
 
@@ -98,7 +99,7 @@ type TCPSession struct {
 }
 
 // NewTCPSession return an initialized *TCPSession
-func NewTCPSession(conn NetConn, options ...Option) *TCPSession {
+func NewTCPSession(conn net.Conn, options ...Option) *TCPSession {
 	op := loadOptions(options...)
 	if op.MsgCallback == nil {
 		// need message callback

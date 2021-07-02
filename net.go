@@ -42,26 +42,21 @@ type Session interface {
 	IsClosed() bool
 }
 
-// NetConn
-type NetConn interface {
-	net.Conn
-}
-
 // AcceptorHandle type interface
 type AcceptorHandler interface {
 	// handler to invokes
-	OnConnection(conn NetConn)
+	OnConnection(conn net.Conn)
 }
 
-type AcceptorHandlerFunc func(conn NetConn)
+type AcceptorHandlerFunc func(conn net.Conn)
 
-func (handler AcceptorHandlerFunc) OnConnection(conn NetConn) {
+func (handler AcceptorHandlerFunc) OnConnection(conn net.Conn) {
 	// handler to invokes
 	handler(conn)
 }
 
 // Deprecated: HandleFunc returns AcceptorHandlerFunc with the handler function.
-func HandleFunc(handler func(conn NetConn)) AcceptorHandlerFunc {
+func HandleFunc(handler func(conn net.Conn)) AcceptorHandlerFunc {
 	return handler
 }
 

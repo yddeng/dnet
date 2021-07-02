@@ -2,13 +2,14 @@ package dnet
 
 import (
 	"fmt"
+	"net"
 	"testing"
 	"time"
 )
 
 func TestNewWSSession(t *testing.T) {
 	go func() {
-		ServeWSFunc(":4522", func(conn NetConn) {
+		ServeWSFunc(":4522", func(conn net.Conn) {
 			fmt.Println("new Conn", conn.RemoteAddr())
 			session := NewWSSession(conn,
 				WithCloseCallback(func(session Session, reason error) {

@@ -9,7 +9,7 @@ import (
 
 type testTCPHandler struct{}
 
-func (this *testTCPHandler) OnConnection(conn NetConn) {
+func (this *testTCPHandler) OnConnection(conn net.Conn) {
 	fmt.Println("new Conn", conn.RemoteAddr())
 	session := NewTCPSession(conn,
 		WithCloseCallback(func(session Session, reason error) {
@@ -65,7 +65,7 @@ func TestNewTCPSession(t *testing.T) {
 
 type testTCPHandler2 struct{}
 
-func (this *testTCPHandler2) OnConnection(conn NetConn) {
+func (this *testTCPHandler2) OnConnection(conn net.Conn) {
 	fmt.Println("new Conn", conn.RemoteAddr())
 
 	go func() {

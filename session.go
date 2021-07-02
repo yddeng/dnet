@@ -13,7 +13,7 @@ type session struct {
 	opts    *Options
 	optLock sync.Mutex
 
-	conn    NetConn
+	conn    net.Conn
 	context atomic.Value // interface{} // 用户数据
 
 	sendOnce      sync.Once
@@ -25,7 +25,7 @@ type session struct {
 	chClose   chan struct{}
 }
 
-func newSession(conn NetConn, options *Options) *session {
+func newSession(conn net.Conn, options *Options) *session {
 	if options.SendChannelSize <= 0 {
 		options.SendChannelSize = defSendChannelSize
 	}

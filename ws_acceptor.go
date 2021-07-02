@@ -99,7 +99,7 @@ func (this *WSAcceptor) Stop() {
 	}
 }
 
-func DialWS(host string, timeout time.Duration) (NetConn, error) {
+func DialWS(host string, timeout time.Duration) (net.Conn, error) {
 	u := url.URL{Scheme: "ws", Host: host}
 	websocket.DefaultDialer.HandshakeTimeout = timeout
 	conn, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
