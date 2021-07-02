@@ -8,6 +8,7 @@ import (
 	"github.com/yddeng/dnet/examples/module/handler"
 	"github.com/yddeng/dnet/examples/module/message"
 	"github.com/yddeng/dnet/examples/pb"
+	"net"
 	"time"
 )
 
@@ -27,7 +28,7 @@ func main() {
 
 	addr := "localhost:1234"
 	fmt.Println("serve tcp", addr)
-	if err := dnet.ServeTCPFunc(addr, func(conn dnet.NetConn) {
+	if err := dnet.ServeTCPFunc(addr, func(conn net.Conn) {
 		fmt.Println("new client", conn.RemoteAddr().String())
 		_ = dnet.NewTCPSession(conn,
 			dnet.WithTimeout(time.Second*5, 0), // 超时

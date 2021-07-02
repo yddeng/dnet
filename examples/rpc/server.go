@@ -8,6 +8,7 @@ import (
 	"github.com/yddeng/dnet/drpc"
 	"github.com/yddeng/dnet/examples/pb"
 	"github.com/yddeng/dnet/examples/rpc/codec"
+	"net"
 	"sync/atomic"
 	"time"
 )
@@ -46,7 +47,7 @@ func main() {
 
 	addr := "localhost:7756"
 	go func() {
-		if err := dnet.ServeTCPFunc(addr, func(conn dnet.NetConn) {
+		if err := dnet.ServeTCPFunc(addr, func(conn net.Conn) {
 			fmt.Println("new client", conn.RemoteAddr().String())
 
 			dnet.NewTCPSession(conn,
