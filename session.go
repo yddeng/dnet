@@ -21,7 +21,7 @@ type session struct {
 	sendMessageCh chan interface{} // 发送队列
 
 	waitGroup sync.WaitGroup
-	closeOnce sync.Once
+	closed    int32
 	chClose   chan struct{}
 }
 
@@ -215,21 +215,20 @@ func (this *session) Send(o interface{}) error {
  先关闭读，待写发送完毕关闭写
 */
 func (this *session) Close(reason error) {
-	this.closeOnce.Do(func() {
+	if atomic.CompareAndSwapInt32(&this.closed, 0, 1) {
 		close(this.chClose)
 		//_ = this.conn.(*net.TCPConn).CloseRead()
-		_ = this.conn.Close()
 		// 触发循环
 		sendNotifyChan(this.sendNotifyCh)
 
 		go func() {
 			this.waitGroup.Wait()
-			//_ = this.conn.Close()
+			_ = this.conn.Close()
 			if this.opts.CloseCallback != nil {
 				this.opts.CloseCallback(this, reason)
 			}
 		}()
-	})
+	}
 }
 
 // 作为通知用的 channel， make(chan struct{}, 1)
