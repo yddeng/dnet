@@ -13,8 +13,10 @@ type session struct {
 	opts    *Options
 	optLock sync.Mutex
 
-	conn    net.Conn
-	context atomic.Value // interface{} // 用户数据
+	conn net.Conn
+
+	context interface{} // 用户数据
+	ctxLock sync.Mutex
 
 	sendOnce      sync.Once
 	sendNotifyCh  chan struct{}    // 发送消息通知
@@ -46,11 +48,15 @@ func newSession(conn net.Conn, options *Options) *session {
 }
 
 func (this *session) SetContext(context interface{}) {
-	this.context.Store(context)
+	this.ctxLock.Lock()
+	this.context = context
+	this.ctxLock.Unlock()
 }
 
 func (this *session) Context() interface{} {
-	return this.context.Load()
+	this.ctxLock.Lock()
+	defer this.ctxLock.Unlock()
+	return this.context
 }
 
 func (this *session) IsClosed() bool {
