@@ -10,8 +10,7 @@ import (
 const defSendChannelSize = 1024
 
 type session struct {
-	opts    *Options
-	optLock sync.Mutex
+	opts *Options
 
 	conn net.Conn
 
@@ -67,14 +66,6 @@ func (this *session) IsClosed() bool {
 		return false
 	}
 }
-
-/*
-func (this *session) SetOption(opt Option) {
-	this.optLock.Lock()
-	defer this.optLock.Unlock()
-	this.opts = copyOption(this.opts, opt)
-}
-*/
 
 func (this *session) NetConn() interface{} {
 	return this.conn

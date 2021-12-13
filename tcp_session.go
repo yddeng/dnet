@@ -1,8 +1,9 @@
 package dnet
 
 import (
+	"bytes"
+	"encoding/binary"
 	"fmt"
-	"github.com/yddeng/utils/buffer"
 	"io"
 	"net"
 	"reflect"
@@ -17,79 +18,41 @@ const (
 	buffSize = 65535   // 缓存容量(与lenSize有关，2字节最大65535）
 )
 
-type defTCPCodec struct {
-	readBuf  *buffer.Buffer
-	dataLen  uint16
-	readHead bool
-}
-
-func newTCPCodec() *defTCPCodec {
-	return &defTCPCodec{
-		readBuf: &buffer.Buffer{},
-	}
-}
+type DefTCPCodec struct{}
 
 //解码
-func (decoder *defTCPCodec) Decode(reader io.Reader) (interface{}, error) {
-	for {
-		msg, err := decoder.unPack()
-
-		if msg != nil {
-			return msg, nil
-
-		} else if err == nil {
-			_, err1 := decoder.readBuf.ReadFrom(reader)
-			if err1 != nil {
-				return nil, err1
-			}
-		} else {
-			return nil, err
-		}
-	}
-}
-
-func (decoder *defTCPCodec) unPack() ([]byte, error) {
-
-	if !decoder.readHead {
-		if decoder.readBuf.Len() < headSize {
-			return nil, nil
-		}
-
-		decoder.dataLen, _ = decoder.readBuf.ReadUint16BE()
-		decoder.readHead = true
+func (_ DefTCPCodec) Decode(reader io.Reader) (interface{}, error) {
+	hdr := make([]byte, headSize)
+	_, err := io.ReadFull(reader, hdr)
+	if err != nil {
+		return nil, err
 	}
 
-	if decoder.readBuf.Len() < int(decoder.dataLen) {
-		return nil, nil
+	length := binary.BigEndian.Uint16(hdr)
+	buff := make([]byte, length)
+
+	if _, err := io.ReadFull(reader, buff); err != nil {
+		return nil, err
 	}
-
-	data, _ := decoder.readBuf.ReadBytes(int(decoder.dataLen))
-
-	decoder.readHead = false
-	return data, nil
+	return buff, nil
 }
 
 //编码
-func (encoder *defTCPCodec) Encode(o interface{}) ([]byte, error) {
+func (_ DefTCPCodec) Encode(o interface{}) ([]byte, error) {
 
 	data, ok := o.([]byte)
 	if !ok {
 		return nil, fmt.Errorf("dnet:Encode interface{} is %s, need type []byte", reflect.TypeOf(o))
 	}
 
-	dataLen := len(data)
-	if dataLen > buffSize-headSize {
-		return nil, fmt.Errorf("dnet:Encode dataLen is too large,len: %d", dataLen)
+	length := len(data)
+	if length > buffSize {
+		return nil, fmt.Errorf("dnet:Encode dataLen is too large,len: %d", length)
 	}
 
-	msgLen := dataLen + headSize
-	buff := buffer.NewBufferWithCap(msgLen)
-
-	//写入data长度
-	buff.WriteUint16BE(uint16(dataLen))
-	//data数据
-	buff.WriteBytes(data)
-
+	buff := new(bytes.Buffer)
+	binary.Write(buff, binary.BigEndian, uint16(length))
+	buff.Write(data)
 	return buff.Bytes(), nil
 }
 
@@ -107,18 +70,10 @@ func NewTCPSession(conn net.Conn, options ...Option) *TCPSession {
 	}
 	// init default codec
 	if op.Codec == nil {
-		op.Codec = newTCPCodec()
+		op.Codec = DefTCPCodec{}
 	}
 
 	return &TCPSession{
 		session: newSession(conn, op),
 	}
 }
-
-//func (this *TCPSession) CloseRead() error {
-//	return this.conn.CloseRead()
-//}
-//
-//func (this *TCPSession) CloseWrite() error {
-//	return this.conn.CloseWrite()
-//}

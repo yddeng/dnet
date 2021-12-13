@@ -1,32 +1,27 @@
 package dnet
 
 import (
+	"bytes"
 	"fmt"
-	"github.com/yddeng/utils/buffer"
 	"io"
 	"net"
 	"reflect"
 )
 
-type defWsCodec struct {
-	readBuf *buffer.Buffer
-}
-
-func newWsCodec() *defWsCodec {
-	return &defWsCodec{readBuf: buffer.NewBufferWithCap(1024)}
-}
+type DefWsCodec struct{}
 
 //解码
-func (decoder *defWsCodec) Decode(reader io.Reader) (interface{}, error) {
-	n, err := decoder.readBuf.ReadFrom(reader)
+func (_ DefWsCodec) Decode(reader io.Reader) (interface{}, error) {
+	buff := new(bytes.Buffer)
+	_, err := buff.ReadFrom(reader)
 	if err != nil {
 		return nil, err
 	}
-	return decoder.readBuf.ReadBytes(int(n))
+	return buff.Bytes(), nil
 }
 
 //编码
-func (encoder *defWsCodec) Encode(o interface{}) ([]byte, error) {
+func (_ DefWsCodec) Encode(o interface{}) ([]byte, error) {
 	data, ok := o.([]byte)
 	if !ok {
 		return nil, fmt.Errorf("dnet:defWSCodec encode interface{} is %s, need type []byte", reflect.TypeOf(o))
@@ -47,7 +42,7 @@ func NewWSSession(conn net.Conn, options ...Option) *WSSession {
 	}
 	// init default codec
 	if op.Codec == nil {
-		op.Codec = newWsCodec()
+		op.Codec = DefWsCodec{}
 	}
 
 	return &WSSession{
