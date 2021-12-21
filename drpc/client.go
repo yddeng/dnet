@@ -1,8 +1,8 @@
 package drpc
 
 import (
+	"errors"
 	"fmt"
-	"github.com/pkg/errors"
 	"github.com/yddeng/timer"
 	"sync"
 	"sync/atomic"
